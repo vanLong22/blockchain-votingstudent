@@ -1,5 +1,5 @@
 let WALLET_CONNECTED = "0x1085B53922A837c3d4482bcF462a36D58189FB6f";
-let contractAddress = "0xD9cD1F3bB20848c9484Ae002285BA86C26143C31";
+let contractAddress = "0x266726F058c3413a8F5F7A87565C18fB44443FAF";
 let contractAbi = [
     {
       "inputs": [
@@ -510,27 +510,67 @@ const connectMetamask = async () => {
     }
 };
 
-const addVote = async () => {
-    if (WALLET_CONNECTED) {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const signer = provider.getSigner();
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-        var cand = document.getElementById("cand");
-        cand.innerHTML = "Please wait, adding a vote in the smart contract";
+// const addVote = async () => {
+//     if (WALLET_CONNECTED) {
+//         const provider = new ethers.providers.Web3Provider(window.ethereum);
+//         const signer = provider.getSigner();
+//         const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+//         var cand = document.getElementById("cand");
+//         cand.innerHTML = "Please wait, adding a vote in the smart contract";
 
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            alert("Please switch to Sepolia Test Network!");
+//         const network = await provider.getNetwork();
+//         if (network.chainId !== 11155111) {
+//             alert("Please switch to Sepolia Test Network!");
+//             return;
+//         }
+
+//         const tx = await contractInstance.vote(document.getElementById("voteId").value);
+//         await tx.wait();
+//         cand.innerHTML = "Vote added !!!";
+//     } else {
+//         document.getElementById("cand").innerHTML = "Please connect Metamask first";
+//     }
+// }
+
+const addVote = async () => {
+    if (!WALLET_CONNECTED) {
+        document.getElementById("cand").innerHTML = "⚠️ Please connect MetaMask first!";
+        return;
+    }
+
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+    const cand = document.getElementById("cand");
+    const voteId = document.getElementById("voteId").value;
+
+    cand.innerHTML = "⏳ Please wait, processing your vote...";
+
+    const network = await provider.getNetwork();
+    if (network.chainId !== 11155111) {
+        alert("⚠️ Please switch to Sepolia Test Network!");
+        return;
+    }
+
+    try {
+        // 🧩 Kiểm tra xem người dùng đã vote chưa
+        const hasVoted = await contractInstance.voters(WALLET_CONNECTED);
+        if (hasVoted) {
+            cand.innerHTML = "🚫 You have already voted!";
             return;
         }
 
-        const tx = await contractInstance.vote(document.getElementById("vote").value);
+        // 🗳 Nếu chưa vote thì cho phép vote
+        const tx = await contractInstance.vote(voteId);
         await tx.wait();
-        cand.innerHTML = "Vote added !!!";
-    } else {
-        document.getElementById("cand").innerHTML = "Please connect Metamask first";
+
+        cand.innerHTML = "✅ Vote successfully recorded!";
+    } catch (error) {
+        console.error("Error while voting:", error);
+        cand.innerHTML = "❌ Failed to vote. Check console for details.";
     }
-}
+};
+
 
 async function getCandidates() {
     try {
@@ -589,3 +629,67 @@ const getAllCandidates = async () => {
         document.getElementById("p3").innerHTML = "Vui lòng kết nối MetaMask trước!";
     }
 };
+
+async function addCandidate(event) {
+    event.preventDefault(); // Ngăn form reload lại trang
+
+    const name = document.getElementById("candidateName").value.trim();
+    const status = document.getElementById("p3");
+
+    if (!name) {
+        alert("Vui lòng nhập tên ứng viên!");
+        return;
+    }
+
+    if (!window.ethereum) {
+        alert("Vui lòng cài đặt MetaMask!");
+        return;
+    }
+
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {
+            alert("Vui lòng chuyển sang mạng Sepolia!");
+            return;
+        }
+
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+
+        status.innerHTML = "⏳ Đang thêm ứng viên vào blockchain...";
+
+        // 1️⃣ Gọi hàm trên smart contract
+        const tx = await contractInstance.addCandidate(name);
+        await tx.wait();
+
+        // 2️⃣ Sau khi blockchain thêm xong => lưu vào DB
+        const response = await fetch("http://localhost:3000/api/candidates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            status.innerHTML = `✅ Ứng viên "${name}" đã được thêm vào blockchain & DB!`;
+        } else {
+            status.innerHTML = "⚠️ Đã thêm vào blockchain nhưng không lưu được vào DB!";
+        }
+
+        // 3️⃣ Xóa nội dung ô nhập và load lại danh sách
+        document.getElementById("candidateName").value = "";
+        await getAllCandidates();
+
+    } catch (error) {
+        console.error("Lỗi khi thêm ứng viên:", error);
+        if (error.message.includes("Only owner")) {
+            status.innerHTML = "❌ Bạn không có quyền thêm ứng viên (chỉ chủ sở hữu mới được phép).";
+        } else {
+            status.innerHTML = "❌ Có lỗi xảy ra khi thêm ứng viên. Xem console để biết chi tiết.";
+        }
+    }
+}
+

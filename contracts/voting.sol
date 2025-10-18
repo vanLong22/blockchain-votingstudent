@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract Voting is ERC20 {
-    struct Candidate {
+    struct Candidate { 
         string name;
         uint256 voteCount;
     }
@@ -107,5 +107,22 @@ contract Voting is ERC20 {
             return 0;
         }
         return votingEnd - block.timestamp;
+    }
+
+    // trả về ứng viên  chiến thắng
+    function getWinner() public view returns (string memory winnerName, uint winnerVotes) {
+        require(block.timestamp > votingEnd, "Voting not ended yet");
+
+        uint highestVotes = 0;
+        uint winnerIndex = 0;
+
+        for (uint i = 0; i < candidates.length; i++) {
+            if (candidates[i].voteCount > highestVotes) {
+                highestVotes = candidates[i].voteCount;
+                winnerIndex = i;
+            }
+        }
+
+        return (candidates[winnerIndex].name, highestVotes);
     }
 }

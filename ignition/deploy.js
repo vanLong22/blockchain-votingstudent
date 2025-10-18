@@ -34,7 +34,7 @@ async function main() {
   }
 
   const Voting = await ethers.getContractFactory("Voting");
-  const durationInMinutes = 5;
+  const durationInMinutes = 10080;
 
   // 🔹 Deploy contract
   console.log("🚀 Deploying contract with candidates:", candidateNames);

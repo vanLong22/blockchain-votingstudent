@@ -146,6 +146,10 @@
     </div>
 
     <div class="container">
+		<!-- ⏳ Bộ đếm thời gian -->
+		<p>Time remaining for voting:</p>
+		<p id="countdown"></p>
+
         <span>Vote here</span>
         <input type = "number" id ="voteId" placeholder="Add Index of the Voter ... ">
         <button onclick="addVote()">Add Vote</button>
@@ -154,6 +158,11 @@
         <button onclick="voteStatus()">Check Voting Status</button>
         <p id = "status"></p>
         <p id = "time"></p>
+
+		 
+		<!-- 🏆 Nút xem người chiến thắng -->
+		<button id="winnerBtn" style="display:none;" onclick="showWinner()">View Winner</button>
+		<p id="winnerInfo"></p>
     </div>
 </body>
 </html>

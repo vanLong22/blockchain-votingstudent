@@ -1,5 +1,5 @@
 let WALLET_CONNECTED = "0x1085B53922A837c3d4482bcF462a36D58189FB6f";
-let contractAddress = "0x266726F058c3413a8F5F7A87565C18fB44443FAF";
+let contractAddress = "0xf680a99E71f5497C41Aaeb341604D05B7Bf208C5";
 let contractAbi = [
     {
       "inputs": [
@@ -484,32 +484,44 @@ let contractAbi = [
     }
   ];
 
-
 const connectMetamask = async () => {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     try {
         await provider.send("eth_requestAccounts", []);
         const signer = provider.getSigner();
-        WALLET_CONNECTED = await signer.getAddress();
-        var element = document.getElementById("metamasknotification");
+        WALLET_CONNECTED = await signer.getAddress(); // Cập nhật biến toàn cục
+        const element = document.getElementById("metamasknotification");
 
-        // Kiểm tra mạng
         const network = await provider.getNetwork();
-        console.log("Current network:", network.name, "Chain ID:", network.chainId);
         if (network.chainId !== 11155111) {
             await window.ethereum.request({
                 method: "wallet_switchEthereumChain",
-                params: [{ chainId: "0xaa36a7" }], // Sepolia Chain ID
+                params: [{ chainId: "0xaa36a7" }],
             });
+            element.innerHTML = "Đã chuyển sang mạng Sepolia.";
         } else {
-            element.innerHTML = "Metamask is connected " + WALLET_CONNECTED;
+            element.innerHTML = "MetaMask đã kết nối: " + WALLET_CONNECTED;
         }
+
+        // Gửi địa chỉ ví về backend để lưu vào MySQL
+        const response = await fetch("http://localhost:3000/api/saveWallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ walletAddress: WALLET_CONNECTED }),
+        });
+
+        if (response.ok) {
+            console.log("Địa chỉ ví đã được lưu thành công!");
+        } else {
+            console.error("Lỗi khi lưu địa chỉ ví:", await response.text());
+        }
+
     } catch (error) {
-        console.error("Error connecting to MetaMask:", error);
-        element.innerHTML = "Failed to connect. Please ensure Sepolia is selected!";
+        console.error("Lỗi khi kết nối MetaMask:", error);
+        document.getElementById("metamasknotification").innerHTML =
+            "Không thể kết nối. Vui lòng chọn mạng Sepolia!";
     }
 };
-
 // const addVote = async () => {
 //     if (WALLET_CONNECTED) {
 //         const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -692,4 +704,93 @@ async function addCandidate(event) {
         }
     }
 }
+/*
+// trả về người chiến thắng 
+async function showWinner() {
+    const winnerInfoElement = document.getElementById("winnerInfo");
 
+    if (!window.ethereum) {
+        winnerInfoElement.innerHTML = "⚠️ Please install MetaMask!";
+        return;
+    }
+
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider);
+
+        const currentStatus = await contractInstance.getVotingStatus();
+        if (currentStatus) {
+            winnerInfoElement.innerHTML = "⏳ Voting is still in progress!";
+            return;
+        }
+
+        const [winnerName, winnerVotes] = await contractInstance.getWinner();
+        winnerInfoElement.innerHTML = `🏆 Winner: ${winnerName} with ${winnerVotes} votes`;
+    } catch (error) {
+        console.error("Lỗi khi lấy thông tin người chiến thắng:", error);
+        winnerInfoElement.innerHTML = "❌ Error fetching winner. Check console for details.";
+    }
+}
+*/
+
+
+// hiển thị countdown thời gian còn lại mà không cần connect wallet
+async function displayRemainingTime() {
+    const countdownElement = document.getElementById("countdown");
+    const statusElement = document.getElementById("status"); // Optional: Cập nhật status nếu cần
+
+    if (!window.ethereum) {
+        countdownElement.innerHTML = "⚠️ Please install MetaMask to view countdown!";
+        return;
+    }
+
+    try {
+        // Sử dụng provider mà không cần connect wallet (không gọi eth_requestAccounts)
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider); // Dùng provider cho read-only
+
+        // Lấy remaining time và status từ contract
+        let remainingSeconds = parseInt(await contractInstance.getRemainingTime(), 10); // Lấy giây còn lại
+        const currentStatus = await contractInstance.getVotingStatus();
+
+        // Cập nhật status nếu cần (tương tự voteStatus)
+        if (statusElement) {
+            statusElement.innerHTML = currentStatus ? "Voting is currently open" : "Voting is finished";
+        }
+
+        // Hàm cập nhật countdown
+        function updateCountdown() {
+            if (remainingSeconds <= 0) {
+                countdownElement.innerHTML = "🛑 Voting has finished!";
+                if (statusElement) statusElement.innerHTML = "Voting is finished";
+                return;
+            }
+
+            const hours = Math.floor(remainingSeconds / 3600);
+            const minutes = Math.floor((remainingSeconds % 3600) / 60);
+            const seconds = remainingSeconds % 60;
+
+            countdownElement.innerHTML = `Remaining: ${hours}h ${minutes}m ${seconds}s`;
+            remainingSeconds--; // Giảm dần mỗi giây
+        }
+
+        // Gọi ngay lập tức và setInterval để countdown
+        updateCountdown();
+        const interval = setInterval(updateCountdown, 1000);
+
+        if (remainingSeconds <= 0) {
+            clearInterval(interval);
+            if (winnerButton) winnerButton.style.display = "block"; // Hiển thị ngay nếu đã hết thời gian
+        }
+
+    } catch (error) {
+        console.error("Lỗi khi lấy thời gian countdown:", error);
+        countdownElement.innerHTML = "❌ Error loading countdown. Check console.";
+    }
+}
+
+// Tự động gọi khi trang load
+window.onload = function() {
+    displayRemainingTime(); // Hiển thị countdown ngay khi truy cập
+    // Optional: Gọi các hàm khác nếu cần, ví dụ getAllCandidates() để load danh sách tự động
+};

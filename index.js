@@ -53,6 +53,30 @@ app.post("/api/candidates", async (req, res) => {
     }
 });
 
+// Xoá ứng viên theo ID
+app.delete("/api/candidates/:id", async (req, res) => {
+    const { id } = req.params;
+
+    if (!id) {
+        return res.status(400).json({ success: false, message: "Thiếu ID ứng viên!" });
+    }
+
+    try {
+        const [result] = await pool.query("DELETE FROM candidates WHERE id = ?", [id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Không tìm thấy ứng viên cần xóa!" });
+        }
+
+        res.json({ success: true, message: "Xóa ứng viên thành công!" });
+    } catch (error) {
+        console.error("Lỗi khi xóa ứng viên:", error);
+        res.status(500).json({ success: false, message: "Lỗi máy chủ khi xóa ứng viên!" });
+    }
+});
+
+
+
 // 🪙 API lưu ví và gửi token
 app.post("/api/saveWallet", async (req, res) => {
     try {
@@ -69,11 +93,33 @@ app.post("/api/saveWallet", async (req, res) => {
         );
 
         if (rows.length > 0) {
+            const user = rows[0];
+
+            // ⚙️ Nếu chưa nhận token => gửi token ngay
+            if (user.tokens_received === 0) {
+                console.log("Người dùng đã có ví nhưng chưa nhận token. Đang gửi...");
+                const tx = await contractInstance.transfer(walletAddress, ethers.parseUnits("10", 18));
+                await tx.wait();
+
+                await pool.query(
+                    "UPDATE wallets SET tokens_received = 1 WHERE wallet_address = ?",
+                    [walletAddress]
+                );
+
+                return res.status(200).json({
+                    success: true,
+                    message: "Ví đã có trong hệ thống. Token vừa được gửi thành công!",
+                    txHash: tx.hash,
+                });
+            }
+
+            // ⚙️ Nếu đã nhận token rồi
             return res.status(200).json({
                 success: true,
-                message: "Địa chỉ ví đã tồn tại trong cơ sở dữ liệu.",
+                message: "Ví đã tồn tại và đã nhận token trước đó.",
             });
         }
+
 
         // ✅ Thêm ví mới
         await pool.query(

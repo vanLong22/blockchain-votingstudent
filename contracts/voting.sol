@@ -32,7 +32,8 @@ contract Voting is ERC20 {
         votingStart = block.timestamp;
         votingEnd = block.timestamp + (_durationInMinutes * 1 minutes);
     }
-    /*
+
+        /*
     constructor(
         string[] memory _candidateNames,
         uint256 _durationInMinutes,
@@ -61,12 +62,14 @@ contract Voting is ERC20 {
         votingEnd = block.timestamp + (_durationInMinutes * 1 minutes);
     }
     */
-
+    
+    // ✅ Chỉ chủ sở hữu mới có quyền gọi
     modifier onlyOwner {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Only owner can perform this action");
         _;
     }
 
+    // ✅ Thêm ứng viên (Admin)
     function addCandidate(string memory _name) public onlyOwner {
         candidates.push(Candidate({
                 name: _name,
@@ -74,16 +77,38 @@ contract Voting is ERC20 {
         }));
     }
 
+    // ✅ Xóa ứng viên theo index (Admin)
+    function deleteCandidate(uint256 _index) public onlyOwner {
+        require(_index < candidates.length, "Invalid candidate index");
+
+        // Dịch các phần tử sau lên để xóa phần tử giữa
+        for (uint256 i = _index; i < candidates.length - 1; i++) {
+            candidates[i] = candidates[i + 1];
+        }
+        candidates.pop();
+    }
+
+    // ✅ Cập nhật thời gian bắt đầu và kết thúc (Admin)
+    function setVotingTime(uint256 _startTime, uint256 _endTime) public onlyOwner {
+        require(_endTime > _startTime, "End time must be greater than start time");
+        votingStart = _startTime;
+        votingEnd = _endTime;
+    }
+
+    // ✅ Hàm vote — giữ nguyên
     function vote(uint256 _candidateIndex) public {
         require(balanceOf(msg.sender) >= 1, "Insufficient tokens to vote");
         require(!voters[msg.sender], "You have already voted.");
         require(_candidateIndex < candidates.length, "Invalid candidate index.");
+        require(block.timestamp >= votingStart, "Voting has not started yet.");
+        require(block.timestamp < votingEnd, "Voting has ended.");
 
-        _burn(msg.sender, 1); // Burn 1 token để vote, liên kết với ERC-20
+        _burn(msg.sender, 1); // Burn 1 token để vote
         candidates[_candidateIndex].voteCount++;
         voters[msg.sender] = true;
     }
 
+    // ✅ Lấy toàn bộ danh sách ứng viên và số phiếu
     function getAllVotesOfCandidates() public view returns (string[] memory, uint256[] memory){
         uint256 length = candidates.length;
         string[] memory names = new string[](length);
@@ -97,10 +122,12 @@ contract Voting is ERC20 {
         return (names, votes);
     }
 
+    // ✅ Kiểm tra trạng thái bầu chọn
     function getVotingStatus() public view returns (bool) {
         return (block.timestamp >= votingStart && block.timestamp < votingEnd);
     }
 
+    // ✅ Thời gian còn lại
     function getRemainingTime() public view returns (uint256) {
         require(block.timestamp >= votingStart, "Voting has not started yet.");
         if (block.timestamp >= votingEnd) {
@@ -109,7 +136,7 @@ contract Voting is ERC20 {
         return votingEnd - block.timestamp;
     }
 
-    // trả về ứng viên  chiến thắng
+    // ✅ Ứng viên chiến thắng
     function getWinner() public view returns (string memory winnerName, uint winnerVotes) {
         require(block.timestamp > votingEnd, "Voting not ended yet");
 

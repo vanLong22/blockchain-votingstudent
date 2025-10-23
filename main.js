@@ -1,5 +1,5 @@
 let WALLET_CONNECTED = "0x1085B53922A837c3d4482bcF462a36D58189FB6f";
-let contractAddress = "0xf680a99E71f5497C41Aaeb341604D05B7Bf208C5";
+let contractAddress = "0xe820A8F4791816443A23211d205794870A738005";
 let contractAbi = [
     {
       "inputs": [
@@ -276,6 +276,19 @@ let contractAbi = [
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_index",
+          "type": "uint256"
+        }
+      ],
+      "name": "deleteCandidate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "getAllVotesOfCandidates",
       "outputs": [
@@ -321,6 +334,24 @@ let contractAbi = [
     },
     {
       "inputs": [],
+      "name": "getWinner",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "winnerName",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "winnerVotes",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "name",
       "outputs": [
         {
@@ -343,6 +374,24 @@ let contractAbi = [
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_startTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_endTime",
+          "type": "uint256"
+        }
+      ],
+      "name": "setVotingTime",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -640,6 +689,8 @@ const getAllCandidates = async () => {
     } else {
         document.getElementById("p3").innerHTML = "Vui lòng kết nối MetaMask trước!";
     }
+
+    await showResultChart();
 };
 
 async function addCandidate(event) {
@@ -777,17 +828,208 @@ async function displayRemainingTime() {
         // Gọi ngay lập tức và setInterval để countdown
         updateCountdown();
         const interval = setInterval(updateCountdown, 1000);
-
+        /*// lấy ứng viên chiến thắng khi hết thời gian bầu cử
         if (remainingSeconds <= 0) {
             clearInterval(interval);
-            if (winnerButton) winnerButton.style.display = "block"; // Hiển thị ngay nếu đã hết thời gian
+            if (winnerButton) winnerButton.style.display = "block"; 
         }
+        */
 
     } catch (error) {
         console.error("Lỗi khi lấy thời gian countdown:", error);
         countdownElement.innerHTML = "❌ Error loading countdown. Check console.";
     }
 }
+
+// ==========================
+// 🧩 Xóa ứng viên (Admin only)
+// ==========================
+async function deleteCandidate(event) {
+    event.preventDefault();
+
+    const id = document.getElementById("deleteId").value.trim();
+    const status = document.getElementById("p3");
+
+    if (!id) {
+        alert("Vui lòng nhập ID ứng viên cần xóa!");
+        return;
+    }
+
+    if (!window.ethereum) {
+        alert("Vui lòng cài đặt MetaMask!");
+        return;
+    }
+
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {
+            alert("Vui lòng chuyển sang mạng Sepolia!");
+            return;
+        }
+
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+
+        status.innerHTML = "⏳ Đang xóa ứng viên khỏi blockchain...";
+
+        // 🧩 Gọi hàm trên blockchain
+        const tx = await contractInstance.deleteCandidate(id).catch((err) => {
+            throw new Error("Không tìm thấy ứng viên trên blockchain hoặc ID không hợp lệ!");
+        });
+        await tx.wait();
+
+        // 🧩 Gọi API backend để xóa khỏi MySQL
+        const response = await fetch(`http://localhost:3000/api/candidates/${id}`, {
+            method: "DELETE",
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            status.innerHTML = `✅ Ứng viên có ID ${id} đã được xóa khỏi blockchain & DB!`;
+        } else if (data.message && data.message.includes("Không tìm thấy")) {
+            status.innerHTML = `⚠️ Ứng viên có ID ${id} không tồn tại trong cơ sở dữ liệu!`;
+        } else {
+            status.innerHTML = "⚠️ Đã xóa trên blockchain nhưng không xóa được khỏi DB!";
+        }
+
+        // 🧩 Làm mới danh sách ứng viên
+        document.getElementById("deleteId").value = "";
+        await getAllCandidates();
+
+    } catch (error) {
+        console.error("Lỗi khi xóa ứng viên:", error);
+
+        if (error.message.includes("Only owner")) {
+            status.innerHTML = "❌ Bạn không có quyền xóa ứng viên (chỉ chủ sở hữu mới được phép).";
+        } else if (error.message.includes("Không tìm thấy")) {
+            status.innerHTML = `⚠️ Ứng viên có ID ${id} không tồn tại trong danh sách!`;
+        } else {
+            status.innerHTML = "❌ Có lỗi xảy ra khi xóa ứng viên. Xem console để biết chi tiết.";
+        }
+    }
+}
+
+
+
+// ==========================
+// ⏰ Cập nhật thời gian bỏ phiếu (Admin only)
+// ==========================
+async function resetVotingTime(event) {
+    event.preventDefault();
+
+    const startInput = document.getElementById("startTime").value;
+    const endInput = document.getElementById("endTime").value;
+    const status = document.getElementById("p3");
+
+    if (!startInput || !endInput) {
+        alert("Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc!");
+        return;
+    }
+
+    // ✅ Chuyển sang Unix timestamp (tính bằng giây)
+    const start = Math.floor(new Date(startInput).getTime() / 1000);
+    const end = Math.floor(new Date(endInput).getTime() / 1000);
+
+    if (end <= start) {
+        alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
+        return;
+    }
+
+    if (!window.ethereum) {
+        alert("Vui lòng cài đặt MetaMask!");
+        return;
+    }
+
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
+
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {
+            alert("Vui lòng chuyển sang mạng Sepolia!");
+            return;
+        }
+
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+
+        status.innerHTML = "⏳ Đang cập nhật thời gian bỏ phiếu trên blockchain...";
+
+        // 🧩 Gọi hàm trên smart contract
+        const tx = await contractInstance.setVotingTime(start, end);
+        await tx.wait();
+
+        // 🟢 Hoàn tất
+        status.innerHTML = "✅ Thời gian bỏ phiếu đã được cập nhật trên blockchain!";
+
+        // 🔄 Làm mới countdown
+        await displayRemainingTime();
+
+    } catch (error) {
+        console.error("Lỗi khi cập nhật thời gian:", error);
+        if (error.message.includes("Only owner")) {
+            status.innerHTML = "❌ Bạn không có quyền cập nhật thời gian (chỉ chủ sở hữu mới được phép).";
+        } else {
+            status.innerHTML = "❌ Có lỗi xảy ra khi cập nhật thời gian. Xem console để biết chi tiết.";
+        }
+    }
+}
+
+
+
+// ==========================
+// 🥧 Biểu đồ kết quả
+// ==========================
+async function showResultChart() {
+    try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider); 
+      
+        const candidates = await contractInstance.getAllVotesOfCandidates();
+        const names = candidates.map(c => c.name);
+        const votes = candidates.map(c => parseInt(c.voteCount));
+
+        const ctx = document.getElementById("resultChart").getContext("2d");
+        if (window.resultChartInstance) window.resultChartInstance.destroy(); // Xóa biểu đồ cũ
+
+        window.resultChartInstance = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: names,
+                datasets: [{
+                    data: votes,
+                    backgroundColor: [
+                        '#4caf50', '#2196f3', '#ff9800', '#f44336', '#9c27b0',
+                        '#00bcd4', '#8bc34a', '#ffc107', '#ff5722'
+                    ],
+                    borderColor: '#1e1e1e',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: { color: '#fff' }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Voting Results (Pie Chart)',
+                        color: '#fff'
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        alert("Error loading chart: " + err.message);
+    }
+}
+
 
 // Tự động gọi khi trang load
 window.onload = function() {

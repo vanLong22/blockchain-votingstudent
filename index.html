@@ -4,6 +4,7 @@
     <title>Voting Decentralized Application</title>
     <script src="main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.1/dist/ethers.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #1e1e1e;
@@ -146,10 +147,17 @@
     </div>
 
     <div class="container">
+        <!--thêm ứng viên -->
         <form onsubmit="addCandidate(event)">
             <span>Add Candidate</span>
             <input type="text" id="candidateName" placeholder="Candidate name">
             <button type="submit">Add Candidate</button>
+        </form>
+        <!-- Xóa ứng viên -->
+        <form onsubmit="deleteCandidate(event)">
+            <span>Delete Candidate</span>
+            <input type="number" id="deleteId" placeholder="Index of Candidate to Delete">
+            <button type="submit">Delete Candidate</button>
         </form>
     </div>
 
@@ -169,6 +177,18 @@
         </table>
     </div>
 
+    <!-- Đặt lại thời gian -->
+    <form>
+        <label for="startTime">Start Time:</label>
+        <input type="datetime-local" id="startTime">
+
+        <label for="endTime">End Time:</label>
+        <input type="datetime-local" id="endTime">
+
+        <button onclick="resetVotingTime(event)">Update Time</button>
+        <p id="p3"></p>
+    </form>
+
     <div class="container">
         <p>Time remaining for voting:</p>
         <p id="countdown"></p>
@@ -181,6 +201,13 @@
         <p id="time"></p>
         <button id="winnerBtn" style="display:none;" onclick="showWinner()">View Winner</button>
         <p id="winnerInfo"></p>
+    </div>
+
+
+
+    <div class="container">
+        <h3>Biểu đồ kết quả bầu chọn</h3>
+        <canvas id="resultChart" width="400" height="400"></canvas>
     </div>
 </body>
 </html>

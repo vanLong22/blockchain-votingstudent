@@ -755,13 +755,12 @@ async function addCandidate(event) {
         }
     }
 }
-/*
-// trả về người chiến thắng 
+
 async function showWinner() {
     const winnerInfoElement = document.getElementById("winnerInfo");
 
     if (!window.ethereum) {
-        winnerInfoElement.innerHTML = "⚠️ Please install MetaMask!";
+        winnerInfoElement.innerHTML = "⚠️ Vui lòng cài đặt MetaMask!";
         return;
     }
 
@@ -769,20 +768,27 @@ async function showWinner() {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider);
 
+        // Kiểm tra trạng thái hiện tại
         const currentStatus = await contractInstance.getVotingStatus();
+
         if (currentStatus) {
-            winnerInfoElement.innerHTML = "⏳ Voting is still in progress!";
+            winnerInfoElement.innerHTML = "🕓 Cuộc bầu chọn vẫn đang diễn ra...";
             return;
         }
 
+        // Nếu đã kết thúc, lấy người chiến thắng
         const [winnerName, winnerVotes] = await contractInstance.getWinner();
-        winnerInfoElement.innerHTML = `🏆 Winner: ${winnerName} with ${winnerVotes} votes`;
+        winnerInfoElement.innerHTML = `
+            🏆 <b>Người chiến thắng:</b> ${winnerName} <br>
+            🗳️ <b>Tổng số phiếu:</b> ${winnerVotes}
+        `;
+
     } catch (error) {
         console.error("Lỗi khi lấy thông tin người chiến thắng:", error);
-        winnerInfoElement.innerHTML = "❌ Error fetching winner. Check console for details.";
+        winnerInfoElement.innerHTML = "❌ Không thể tải thông tin người chiến thắng. Kiểm tra console để biết thêm chi tiết.";
     }
 }
-*/
+
 
 
 // hiển thị countdown thời gian còn lại mà không cần connect wallet
@@ -981,58 +987,97 @@ async function resetVotingTime(event) {
 
 
 
-// ==========================
-// 🥧 Biểu đồ kết quả
-// ==========================
-async function showResultChart() {
+async function drawVoteChart() {
+    const status = document.getElementById("chartStatus");
+    status.innerHTML = "⏳ Đang tải dữ liệu phiếu bầu...";
+
+    if (!window.ethereum) {
+        alert("Vui lòng cài đặt MetaMask!");
+        return;
+    }
+
     try {
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider); 
-      
-        const candidates = await contractInstance.getAllVotesOfCandidates();
-        const names = candidates.map(c => c.name);
-        const votes = candidates.map(c => parseInt(c.voteCount));
+        await provider.send("eth_requestAccounts", []);
+        const signer = provider.getSigner();
 
-        const ctx = document.getElementById("resultChart").getContext("2d");
-        if (window.resultChartInstance) window.resultChartInstance.destroy(); // Xóa biểu đồ cũ
+        const network = await provider.getNetwork();
+        if (network.chainId !== 11155111) {
+            alert("Vui lòng chuyển sang mạng Sepolia!");
+            return;
+        }
 
-        window.resultChartInstance = new Chart(ctx, {
-            type: 'pie',
+        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
+
+        // 🗳️ Lấy danh sách ứng viên & số phiếu
+        const [names, votes] = await contractInstance.getAllVotesOfCandidates();
+
+        // 🔄 Nếu không có ứng viên
+        if (names.length === 0) {
+            status.innerHTML = "⚠️ Chưa có ứng viên để hiển thị!";
+            return;
+        }
+
+        // ✅ Chuẩn bị dữ liệu cho biểu đồ
+        const ctx = document.getElementById("voteChart").getContext("2d");
+
+        // Xóa biểu đồ cũ nếu có
+        if (window.voteChartInstance) {
+            window.voteChartInstance.destroy();
+        }
+
+        window.voteChartInstance = new Chart(ctx, {
+            type: 'bar',
             data: {
                 labels: names,
                 datasets: [{
-                    data: votes,
-                    backgroundColor: [
-                        '#4caf50', '#2196f3', '#ff9800', '#f44336', '#9c27b0',
-                        '#00bcd4', '#8bc34a', '#ffc107', '#ff5722'
-                    ],
-                    borderColor: '#1e1e1e',
-                    borderWidth: 1
+                    label: 'Số lượng phiếu bầu',
+                    data: votes.map(v => parseInt(v)), // chuyển BigNumber thành số
+                    borderWidth: 2,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: {
-                        labels: { color: '#fff' }
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Số phiếu'
+                        }
                     },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Ứng viên'
+                        }
+                    }
+                },
+                plugins: {
                     title: {
                         display: true,
-                        text: 'Voting Results (Pie Chart)',
-                        color: '#fff'
+                        text: '📊 Biểu đồ kết quả bầu chọn'
+                    },
+                    legend: {
+                        display: false
                     }
                 }
             }
         });
-    } catch (err) {
-        console.error(err);
-        alert("Error loading chart: " + err.message);
+
+        status.innerHTML = "✅ Đã hiển thị biểu đồ kết quả bầu chọn!";
+    } catch (error) {
+        console.error("Lỗi khi vẽ biểu đồ:", error);
+        status.innerHTML = "❌ Lỗi khi tải dữ liệu biểu đồ. Xem console để biết chi tiết.";
     }
 }
 
 
 // Tự động gọi khi trang load
 window.onload = function() {
-    displayRemainingTime(); // Hiển thị countdown ngay khi truy cập
-    // Optional: Gọi các hàm khác nếu cần, ví dụ getAllCandidates() để load danh sách tự động
+    displayRemainingTime();  
+    drawVoteChart();
+    showWinner();
 };

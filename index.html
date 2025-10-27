@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
     <title>Voting Decentralized Application</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="main.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.1/dist/ethers.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             background-color: #1e1e1e;
             color: #f0f0f0;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
+            line-height: 1.6;
         }
 
         button {
@@ -19,12 +20,11 @@
             color: #f0f0f0;
             padding: 12px 24px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            display: block;
-            margin: 20px auto;
+            transition: background-color 0.3s ease;
         }
 
         button:hover {
@@ -34,7 +34,7 @@
         p {
             text-align: center;
             font-size: 18px;
-            margin: 20px 0;
+            margin: 15px 0;
         }
 
         form {
@@ -43,17 +43,20 @@
             align-items: center;
             justify-content: center;
             margin: 20px 0;
+            width: 100%;
         }
 
-        input[type=text], input[type=number], select {
-            width: 30%;
+        input[type=text], input[type=number], input[type=datetime-local], select {
+            width: 80%;
+            max-width: 400px;
             padding: 12px 20px;
-            margin: 8px 0;
+            margin: 10px 0;
             box-sizing: border-box;
             border: 1px solid #555;
-            border-radius: 4px;
+            border-radius: 6px;
             background-color: #333;
             color: #f0f0f0;
+            font-size: 16px;
         }
 
         input[type=submit] {
@@ -61,8 +64,10 @@
             color: #f0f0f0;
             padding: 12px 20px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
         }
 
         input[type=submit]:hover {
@@ -74,34 +79,37 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 20px 0;
-            padding: 20px;
+            margin: 30px auto;
+            padding: 25px;
             background-color: #2c2c2c;
-            border-radius: 8px;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
+            border-radius: 12px;
+            max-width: 900px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        span {
+        span, label {
             display: block;
             margin-bottom: 10px;
             font-size: 16px;
+            font-weight: bold;
         }
 
         .navbar {
             overflow: hidden;
             background-color: #121212;
-            font-family: Arial;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
         }
 
         .navbar a {
-            float: left;
             display: block;
             color: #f0f0f0;
             text-align: center;
-            padding: 14px 20px;
+            padding: 16px 30px;
             text-decoration: none;
+            font-size: 18px;
+            transition: background-color 0.3s ease;
         }
 
         .navbar a:hover {
@@ -112,7 +120,7 @@
         #myTable {
             border-collapse: collapse;
             width: 100%;
-            max-width: 600px;
+            max-width: 700px;
             margin: 20px auto;
             background-color: #2c2c2c;
         }
@@ -120,7 +128,7 @@
         #myTable th,
         #myTable td {
             border: 1px solid #555;
-            padding: 8px;
+            padding: 12px;
             text-align: center;
             color: #f0f0f0;
         }
@@ -128,6 +136,49 @@
         #myTable th {
             background-color: #3c3c3c;
             font-weight: bold;
+            font-size: 16px;
+        }
+
+        h2, h3 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #ffffff;
+        }
+
+        /* Improved countdown and status */
+        #countdown, #votingStatus, #status, #time, #winnerInfo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4caf50; /* Green for positive info */
+        }
+
+        /* Chart container */
+        #resultChart {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 20px 10px;
+            }
+
+            input[type=text], input[type=number], input[type=datetime-local] {
+                width: 100%;
+            }
+
+            button {
+                width: 100%;
+                max-width: 300px;
+            }
         }
     </style>
 </head>
@@ -147,13 +198,14 @@
     </div>
 
     <div class="container">
-        <!--thêm ứng viên -->
+        <h3 class="section-title">Manage Candidates</h3>
+        <!-- Add Candidate -->
         <form onsubmit="addCandidate(event)">
             <span>Add Candidate</span>
             <input type="text" id="candidateName" placeholder="Candidate name">
             <button type="submit">Add Candidate</button>
         </form>
-        <!-- Xóa ứng viên -->
+        <!-- Delete Candidate -->
         <form onsubmit="deleteCandidate(event)">
             <span>Delete Candidate</span>
             <input type="number" id="deleteId" placeholder="Index of Candidate to Delete">
@@ -162,6 +214,7 @@
     </div>
 
     <div class="container">
+        <h3 class="section-title">Candidates List</h3>
         <p id="votingStatus"></p>
         <button onclick="getAllCandidates()">List All Candidates</button>
         <p id="p3"></p>
@@ -177,19 +230,22 @@
         </table>
     </div>
 
-    <!-- Đặt lại thời gian -->
-    <form>
-        <label for="startTime">Start Time:</label>
-        <input type="datetime-local" id="startTime">
+    <div class="container">
+        <h3 class="section-title">Set Voting Time</h3>
+        <form>
+            <label for="startTime">Start Time:</label>
+            <input type="datetime-local" id="startTime">
 
-        <label for="endTime">End Time:</label>
-        <input type="datetime-local" id="endTime">
+            <label for="endTime">End Time:</label>
+            <input type="datetime-local" id="endTime">
 
-        <button onclick="resetVotingTime(event)">Update Time</button>
-        <p id="p3"></p>
-    </form>
+            <button onclick="resetVotingTime(event)">Update Time</button>
+            <p id="p3"></p>
+        </form>
+    </div>
 
     <div class="container">
+        <h3 class="section-title">Vote</h3>
         <p>Time remaining for voting:</p>
         <p id="countdown"></p>
         <span>Vote Here</span>
@@ -207,7 +263,13 @@
 
     <div class="container">
         <h3>Biểu đồ kết quả bầu chọn</h3>
-        <canvas id="resultChart" width="400" height="400"></canvas>
+        <canvas id="voteChart" width="400" height="200"></canvas>
+        <p id="chartStatus"></p>
     </div>
+    <!--
+    <script>
+        window.addEventListener("DOMContentLoaded", showResultChart);
+    </script>
+    -->
 </body>
 </html>

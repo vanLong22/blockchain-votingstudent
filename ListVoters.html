@@ -130,7 +130,7 @@ button {
 
 </head>
 <body>
-    <div class = "navbar">
+    <div class="navbar">
         <a href="/index.html">Vote</a>
         <a href="/ListVoters.html">List Voters</a>
     </div>
@@ -141,16 +141,11 @@ button {
     </div>
 
     <div class="container">
-		<form onsubmit="addCandidate(event)">
-			<span>Add candidate here</span>
-			<input type="text" id="candidateName" placeholder="Candidate name">
-			<button type="submit">Add Candidate</button>
-		</form>
-
-    </div>
-
-    <div>
-        <p id= "votingStatus"></p>
+        <form onsubmit="addCandidate(event)">
+            <span>Add Candidate (Owner Only)</span>
+            <input type="text" id="candidateName" placeholder="Candidate name">
+            <button type="submit">Add Candidate</button>
+        </form>
     </div>
 
     <div>
@@ -162,16 +157,28 @@ button {
         <table id="myTable">
             <thead>
                 <tr>
-                    <th>Index</th>
-                    <th>Candidate name</th>
-                    <th>Candidate votes</th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Votes</th>
+                    <th>Status</th>
                 </tr>
             </thead>
-            <tbody>
-
-            </tbody>
+            <tbody></tbody>
         </table>
     </div>
 
+    <div class="container">
+        <h3>List Voters</h3>
+        <button onclick="getAllVoters()">List Voters</button>
+        <table id="votersTable">
+            <thead>
+                <tr>
+                    <th>Index</th>
+                    <th>Address</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 </body>
 </html>

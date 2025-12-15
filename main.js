@@ -1,24 +1,8 @@
 let WALLET_CONNECTED = "0x1085B53922A837c3d4482bcF462a36D58189FB6f";
-let contractAddress = "0xe820A8F4791816443A23211d205794870A738005";
+let contractAddress = "0x4b2F7b1C44d09064E899270f69B4e138146a62b3";  
 let contractAbi = [
     {
-      "inputs": [
-        {
-          "internalType": "string[]",
-          "name": "_candidateNames",
-          "type": "string[]"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_durationInMinutes",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "initialSupply",
-          "type": "uint256"
-        }
-      ],
+      "inputs": [],
       "stateMutability": "nonpayable",
       "type": "constructor"
     },
@@ -109,6 +93,28 @@ let contractAbi = [
       "type": "error"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
       "anonymous": false,
       "inputs": [
         {
@@ -138,6 +144,76 @@ let contractAbi = [
       "inputs": [
         {
           "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "name",
+          "type": "string"
+        }
+      ],
+      "name": "CandidateAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        }
+      ],
+      "name": "CandidateDisabled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "ElectionReset",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        }
+      ],
+      "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "address",
           "name": "from",
           "type": "address"
@@ -159,10 +235,61 @@ let contractAbi = [
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "voter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "candidateName",
+          "type": "string"
+        }
+      ],
+      "name": "Voted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "start",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "end",
+          "type": "uint256"
+        }
+      ],
+      "name": "VotingTimeSet",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "ONE_TOKEN",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "string",
-          "name": "_name",
+          "name": "name_",
           "type": "string"
         }
       ],
@@ -249,6 +376,11 @@ let contractAbi = [
       "name": "candidates",
       "outputs": [
         {
+          "internalType": "uint256",
+          "name": "id",
+          "type": "uint256"
+        },
+        {
           "internalType": "string",
           "name": "name",
           "type": "string"
@@ -256,6 +388,24 @@ let contractAbi = [
         {
           "internalType": "uint256",
           "name": "voteCount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "candidatesCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -279,36 +429,18 @@ let contractAbi = [
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "_index",
+          "name": "id",
           "type": "uint256"
         }
       ],
-      "name": "deleteCandidate",
+      "name": "disableCandidate",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
     },
     {
       "inputs": [],
-      "name": "getAllVotesOfCandidates",
-      "outputs": [
-        {
-          "internalType": "string[]",
-          "name": "",
-          "type": "string[]"
-        },
-        {
-          "internalType": "uint256[]",
-          "name": "",
-          "type": "uint256[]"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getRemainingTime",
+      "name": "endTime",
       "outputs": [
         {
           "internalType": "uint256",
@@ -321,7 +453,79 @@ let contractAbi = [
     },
     {
       "inputs": [],
-      "name": "getVotingStatus",
+      "name": "getCandidates",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "id",
+              "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "internalType": "uint256",
+              "name": "voteCount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bool",
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct VotingExtended.Candidate[]",
+          "name": "",
+          "type": "tuple[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getVoters",
+      "outputs": [
+        {
+          "internalType": "address[]",
+          "name": "",
+          "type": "address[]"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getWinner",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "winner",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "votes",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "hasVoted",
       "outputs": [
         {
           "internalType": "bool",
@@ -334,16 +538,11 @@ let contractAbi = [
     },
     {
       "inputs": [],
-      "name": "getWinner",
+      "name": "maxVoters",
       "outputs": [
         {
-          "internalType": "string",
-          "name": "winnerName",
-          "type": "string"
-        },
-        {
           "internalType": "uint256",
-          "name": "winnerVotes",
+          "name": "",
           "type": "uint256"
         }
       ],
@@ -358,6 +557,25 @@ let contractAbi = [
           "internalType": "string",
           "name": "",
           "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "name": "nameToId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",
@@ -379,19 +597,72 @@ let contractAbi = [
     {
       "inputs": [
         {
+          "internalType": "bool",
+          "name": "status",
+          "type": "bool"
+        }
+      ],
+      "name": "pause",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "paused",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "resetElection",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "uint256",
-          "name": "_startTime",
+          "name": "_start",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "_endTime",
+          "name": "_end",
           "type": "uint256"
         }
       ],
       "name": "setVotingTime",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "startTime",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -476,9 +747,22 @@ let contractAbi = [
     {
       "inputs": [
         {
-          "internalType": "uint256",
-          "name": "_candidateIndex",
-          "type": "uint256"
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "candidateName",
+          "type": "string"
         }
       ],
       "name": "vote",
@@ -494,20 +778,7 @@ let contractAbi = [
           "type": "address"
         }
       ],
-      "name": "voters",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "votingEnd",
+      "name": "votedCandidate",
       "outputs": [
         {
           "internalType": "uint256",
@@ -520,7 +791,7 @@ let contractAbi = [
     },
     {
       "inputs": [],
-      "name": "votingStart",
+      "name": "votersCount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -529,555 +800,371 @@ let contractAbi = [
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "votersList",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "withdrawToken",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     }
-  ];
 
-const connectMetamask = async () => {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+];
+
+// Kết nối Metamask
+async function connectMetamask() {
+  if (window.ethereum) {
     try {
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        WALLET_CONNECTED = await signer.getAddress(); // Cập nhật biến toàn cục
-        const element = document.getElementById("metamasknotification");
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            await window.ethereum.request({
-                method: "wallet_switchEthereumChain",
-                params: [{ chainId: "0xaa36a7" }],
-            });
-            element.innerHTML = "Đã chuyển sang mạng Sepolia.";
-        } else {
-            element.innerHTML = "MetaMask đã kết nối: " + WALLET_CONNECTED;
-        }
-
-        // Gửi địa chỉ ví về backend để lưu vào MySQL
-        const response = await fetch("http://localhost:3000/api/saveWallet", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ walletAddress: WALLET_CONNECTED }),
-        });
-
-        if (response.ok) {
-            console.log("Địa chỉ ví đã được lưu thành công!");
-        } else {
-            console.error("Lỗi khi lưu địa chỉ ví:", await response.text());
-        }
-
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      WALLET_CONNECTED = accounts[0];
+      document.getElementById("metamasknotification").innerHTML = "Wallet connected: " + WALLET_CONNECTED;
     } catch (error) {
-        console.error("Lỗi khi kết nối MetaMask:", error);
-        document.getElementById("metamasknotification").innerHTML =
-            "Không thể kết nối. Vui lòng chọn mạng Sepolia!";
+      console.error(error);
     }
-};
-// const addVote = async () => {
-//     if (WALLET_CONNECTED) {
-//         const provider = new ethers.providers.Web3Provider(window.ethereum);
-//         const signer = provider.getSigner();
-//         const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-//         var cand = document.getElementById("cand");
-//         cand.innerHTML = "Please wait, adding a vote in the smart contract";
+  } else {
+    alert("Metamask not found");
+  }
+}
 
-//         const network = await provider.getNetwork();
-//         if (network.chainId !== 11155111) {
-//             alert("Please switch to Sepolia Test Network!");
-//             return;
-//         }
+// Thêm candidate (owner only)
+async function addCandidate(event) {
+  event.preventDefault();
+  const name = document.getElementById("candidateName").value.trim();
+  const status = document.getElementById("p3");
 
-//         const tx = await contractInstance.vote(document.getElementById("voteId").value);
-//         await tx.wait();
-//         cand.innerHTML = "Vote added !!!";
-//     } else {
-//         document.getElementById("cand").innerHTML = "Please connect Metamask first";
-//     }
-// }
+  if (!name) return alert("Enter candidate name");
 
-const addVote = async () => {
-    if (!WALLET_CONNECTED) {
-        document.getElementById("cand").innerHTML = "⚠️ Please connect MetaMask first!";
-        return;
-    }
-
+  try {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
-    const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-    const cand = document.getElementById("cand");
-    const voteId = document.getElementById("voteId").value;
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
 
-    cand.innerHTML = "⏳ Please wait, processing your vote...";
-
-    const network = await provider.getNetwork();
-    if (network.chainId !== 11155111) {
-        alert("⚠️ Please switch to Sepolia Test Network!");
-        return;
-    }
-
-    try {
-        // 🧩 Kiểm tra xem người dùng đã vote chưa
-        const hasVoted = await contractInstance.voters(WALLET_CONNECTED);
-        if (hasVoted) {
-            cand.innerHTML = "🚫 You have already voted!";
-            return;
-        }
-
-        // 🗳 Nếu chưa vote thì cho phép vote
-        const tx = await contractInstance.vote(voteId);
-        await tx.wait();
-
-        cand.innerHTML = "✅ Vote successfully recorded!";
-    } catch (error) {
-        console.error("Error while voting:", error);
-        cand.innerHTML = "❌ Failed to vote. Check console for details.";
-    }
-};
-
-
-async function getCandidates() {
-    try {
-        const candidates = await contract.getAllVotesOfCandidates();
-        console.log(candidates); // Kiểm tra dữ liệu trả về
-        // Xử lý dữ liệu để hiển thị lên giao diện (ví dụ: bảng #myTable)
-    } catch (error) {
-        console.error("Lỗi khi gọi getAllVotesOfCandidates:", error);
-    }
+    status.innerHTML = "Adding candidate...";
+    const tx = await contract.addCandidate(name);
+    await tx.wait();
+    status.innerHTML = "Candidate added!";
+    getAllCandidates();
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error adding candidate (owner only?)";
+  }
 }
 
-const voteStatus = async() => {
-    if(WALLET_CONNECTED != 0) {
-        var status = document.getElementById("status");
-        var remainingTime = document.getElementById("time");
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-        const currentStatus = await contractInstance.getVotingStatus();
-        const time = await contractInstance.getRemainingTime();
-        console.log(time);
-        status.innerHTML = currentStatus == 1 ? "Voting is currently open" : "Voting is finished";
-        remainingTime.innerHTML = `Remaining time is ${parseInt(time, 16)} seconds`;
-    }
-    else {
-        var status = document.getElementById("status");
-        status.innerHTML = "Please connect metamask first";
-    }
+// Disable candidate (owner only)
+async function disableCandidate(event) {
+  event.preventDefault();
+  const id = document.getElementById("disableId").value.trim();
+  const status = document.getElementById("p3");
+
+  if (!id) return alert("Enter candidate ID");
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+    status.innerHTML = "Disabling candidate...";
+    const tx = await contract.disableCandidate(id);
+    await tx.wait();
+    status.innerHTML = "Candidate disabled!";
+    getAllCandidates();
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error disabling candidate (owner only?)";
+  }
 }
 
-const getAllCandidates = async () => {
-    if (WALLET_CONNECTED !== "") {
-        var p3 = document.getElementById("p3");
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-        p3.innerHTML = "Đang lấy danh sách ứng viên...";
-        try {
-            var [names, votes] = await contractInstance.getAllVotesOfCandidates();
-            var table = document.getElementById("myTable");
-            table.innerHTML = "<thead><tr><th>Index</th><th>Candidate name</th><th>Candidate votes</th></tr></thead><tbody></tbody>";
-            for (let i = 0; i < names.length; i++) {
-                var row = table.getElementsByTagName("tbody")[0].insertRow();
-                row.insertCell().innerHTML = i;
-                row.insertCell().innerHTML = names[i];
-                row.insertCell().innerHTML = votes[i].toString();
-            }
-            p3.innerHTML = "Danh sách ứng viên đã được cập nhật";
-        } catch (error) {
-            console.error("Lỗi:", error);
-            p3.innerHTML = "Lỗi khi lấy danh sách ứng viên. Xem console để biết chi tiết.";
-        }
-    } else {
-        document.getElementById("p3").innerHTML = "Vui lòng kết nối MetaMask trước!";
-    }
+// Lấy list candidates và hiển thị table
+async function getAllCandidates() {
+  const tableBody = document.querySelector("#myTable tbody");
+  tableBody.innerHTML = "";
+  const status = document.getElementById("p3");
 
-    await showResultChart();
-};
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
-async function addCandidate(event) {
-    event.preventDefault(); // Ngăn form reload lại trang
+    status.innerHTML = "Loading candidates...";
+    const candidates = await contract.getCandidates();
 
-    const name = document.getElementById("candidateName").value.trim();
-    const status = document.getElementById("p3");
-
-    if (!name) {
-        alert("Vui lòng nhập tên ứng viên!");
-        return;
-    }
-
-    if (!window.ethereum) {
-        alert("Vui lòng cài đặt MetaMask!");
-        return;
-    }
-
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            alert("Vui lòng chuyển sang mạng Sepolia!");
-            return;
-        }
-
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-
-        status.innerHTML = "⏳ Đang thêm ứng viên vào blockchain...";
-
-        // 1️⃣ Gọi hàm trên smart contract
-        const tx = await contractInstance.addCandidate(name);
-        await tx.wait();
-
-        // 2️⃣ Sau khi blockchain thêm xong => lưu vào DB
-        const response = await fetch("http://localhost:3000/api/candidates", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name }),
-        });
-
-        const data = await response.json();
-        if (data.success) {
-            status.innerHTML = `✅ Ứng viên "${name}" đã được thêm vào blockchain & DB!`;
-        } else {
-            status.innerHTML = "⚠️ Đã thêm vào blockchain nhưng không lưu được vào DB!";
-        }
-
-        // 3️⃣ Xóa nội dung ô nhập và load lại danh sách
-        document.getElementById("candidateName").value = "";
-        await getAllCandidates();
-
-    } catch (error) {
-        console.error("Lỗi khi thêm ứng viên:", error);
-        if (error.message.includes("Only owner")) {
-            status.innerHTML = "❌ Bạn không có quyền thêm ứng viên (chỉ chủ sở hữu mới được phép).";
-        } else {
-            status.innerHTML = "❌ Có lỗi xảy ra khi thêm ứng viên. Xem console để biết chi tiết.";
-        }
-    }
+    candidates.forEach((cand, index) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${cand.id}</td>
+        <td>${cand.name}</td>
+        <td>${cand.voteCount}</td>
+        <td>${cand.active ? "Active" : "Disabled"}</td>
+      `;
+      tableBody.appendChild(row);
+    });
+    status.innerHTML = "Candidates loaded!";
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error loading candidates";
+  }
 }
 
-async function showWinner() {
-    const winnerInfoElement = document.getElementById("winnerInfo");
+// Vote (by name)
+async function addVote() {
+  const name = document.getElementById("voteName").value.trim();
+  const status = document.getElementById("cand");
 
-    if (!window.ethereum) {
-        winnerInfoElement.innerHTML = "⚠️ Vui lòng cài đặt MetaMask!";
-        return;
-    }
+  if (!name) return alert("Enter candidate name");
 
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider);
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
 
-        // Kiểm tra trạng thái hiện tại
-        const currentStatus = await contractInstance.getVotingStatus();
-
-        if (currentStatus) {
-            winnerInfoElement.innerHTML = "🕓 Cuộc bầu chọn vẫn đang diễn ra...";
-            return;
-        }
-
-        // Nếu đã kết thúc, lấy người chiến thắng
-        const [winnerName, winnerVotes] = await contractInstance.getWinner();
-        winnerInfoElement.innerHTML = `
-            🏆 <b>Người chiến thắng:</b> ${winnerName} <br>
-            🗳️ <b>Tổng số phiếu:</b> ${winnerVotes}
-        `;
-
-    } catch (error) {
-        console.error("Lỗi khi lấy thông tin người chiến thắng:", error);
-        winnerInfoElement.innerHTML = "❌ Không thể tải thông tin người chiến thắng. Kiểm tra console để biết thêm chi tiết.";
-    }
+    status.innerHTML = "Voting...";
+    const tx = await contract.vote(name);
+    await tx.wait();
+    status.innerHTML = "Voted successfully!";
+    getAllCandidates();
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error voting (check time/paused/approved?)";
+  }
 }
 
-
-
-// hiển thị countdown thời gian còn lại mà không cần connect wallet
-async function displayRemainingTime() {
-    const countdownElement = document.getElementById("countdown");
-    const statusElement = document.getElementById("status"); // Optional: Cập nhật status nếu cần
-
-    if (!window.ethereum) {
-        countdownElement.innerHTML = "⚠️ Please install MetaMask to view countdown!";
-        return;
-    }
-
-    try {
-        // Sử dụng provider mà không cần connect wallet (không gọi eth_requestAccounts)
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, provider); // Dùng provider cho read-only
-
-        // Lấy remaining time và status từ contract
-        let remainingSeconds = parseInt(await contractInstance.getRemainingTime(), 10); // Lấy giây còn lại
-        const currentStatus = await contractInstance.getVotingStatus();
-
-        // Cập nhật status nếu cần (tương tự voteStatus)
-        if (statusElement) {
-            statusElement.innerHTML = currentStatus ? "Voting is currently open" : "Voting is finished";
-        }
-
-        // Hàm cập nhật countdown
-        function updateCountdown() {
-            if (remainingSeconds <= 0) {
-                countdownElement.innerHTML = "🛑 Voting has finished!";
-                if (statusElement) statusElement.innerHTML = "Voting is finished";
-                return;
-            }
-
-            const hours = Math.floor(remainingSeconds / 3600);
-            const minutes = Math.floor((remainingSeconds % 3600) / 60);
-            const seconds = remainingSeconds % 60;
-
-            countdownElement.innerHTML = `Remaining: ${hours}h ${minutes}m ${seconds}s`;
-            remainingSeconds--; // Giảm dần mỗi giây
-        }
-
-        // Gọi ngay lập tức và setInterval để countdown
-        updateCountdown();
-        const interval = setInterval(updateCountdown, 1000);
-        /*// lấy ứng viên chiến thắng khi hết thời gian bầu cử
-        if (remainingSeconds <= 0) {
-            clearInterval(interval);
-            if (winnerButton) winnerButton.style.display = "block"; 
-        }
-        */
-
-    } catch (error) {
-        console.error("Lỗi khi lấy thời gian countdown:", error);
-        countdownElement.innerHTML = "❌ Error loading countdown. Check console.";
-    }
-}
-
-// ==========================
-// 🧩 Xóa ứng viên (Admin only)
-// ==========================
-async function deleteCandidate(event) {
-    event.preventDefault();
-
-    const id = document.getElementById("deleteId").value.trim();
-    const status = document.getElementById("p3");
-
-    if (!id) {
-        alert("Vui lòng nhập ID ứng viên cần xóa!");
-        return;
-    }
-
-    if (!window.ethereum) {
-        alert("Vui lòng cài đặt MetaMask!");
-        return;
-    }
-
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            alert("Vui lòng chuyển sang mạng Sepolia!");
-            return;
-        }
-
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-
-        status.innerHTML = "⏳ Đang xóa ứng viên khỏi blockchain...";
-
-        // 🧩 Gọi hàm trên blockchain
-        const tx = await contractInstance.deleteCandidate(id).catch((err) => {
-            throw new Error("Không tìm thấy ứng viên trên blockchain hoặc ID không hợp lệ!");
-        });
-        await tx.wait();
-
-        // 🧩 Gọi API backend để xóa khỏi MySQL
-        const response = await fetch(`http://localhost:3000/api/candidates/${id}`, {
-            method: "DELETE",
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            status.innerHTML = `✅ Ứng viên có ID ${id} đã được xóa khỏi blockchain & DB!`;
-        } else if (data.message && data.message.includes("Không tìm thấy")) {
-            status.innerHTML = `⚠️ Ứng viên có ID ${id} không tồn tại trong cơ sở dữ liệu!`;
-        } else {
-            status.innerHTML = "⚠️ Đã xóa trên blockchain nhưng không xóa được khỏi DB!";
-        }
-
-        // 🧩 Làm mới danh sách ứng viên
-        document.getElementById("deleteId").value = "";
-        await getAllCandidates();
-
-    } catch (error) {
-        console.error("Lỗi khi xóa ứng viên:", error);
-
-        if (error.message.includes("Only owner")) {
-            status.innerHTML = "❌ Bạn không có quyền xóa ứng viên (chỉ chủ sở hữu mới được phép).";
-        } else if (error.message.includes("Không tìm thấy")) {
-            status.innerHTML = `⚠️ Ứng viên có ID ${id} không tồn tại trong danh sách!`;
-        } else {
-            status.innerHTML = "❌ Có lỗi xảy ra khi xóa ứng viên. Xem console để biết chi tiết.";
-        }
-    }
-}
-
-
-
-// ==========================
-// ⏰ Cập nhật thời gian bỏ phiếu (Admin only)
-// ==========================
+// Set voting time (owner only, unix timestamp)
 async function resetVotingTime(event) {
-    event.preventDefault();
+  event.preventDefault();
+  const startInput = document.getElementById("startTime").value;
+  const endInput = document.getElementById("endTime").value;
+  const status = document.getElementById("p3");
 
-    const startInput = document.getElementById("startTime").value;
-    const endInput = document.getElementById("endTime").value;
-    const status = document.getElementById("p3");
+  const start = Math.floor(new Date(startInput).getTime() / 1000);
+  const end = Math.floor(new Date(endInput).getTime() / 1000);
 
-    if (!startInput || !endInput) {
-        alert("Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc!");
-        return;
-    }
+  if (end <= start) return alert("End time must be after start");
 
-    // ✅ Chuyển sang Unix timestamp (tính bằng giây)
-    const start = Math.floor(new Date(startInput).getTime() / 1000);
-    const end = Math.floor(new Date(endInput).getTime() / 1000);
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
 
-    if (end <= start) {
-        alert("Thời gian kết thúc phải sau thời gian bắt đầu!");
-        return;
-    }
-
-    if (!window.ethereum) {
-        alert("Vui lòng cài đặt MetaMask!");
-        return;
-    }
-
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
-
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            alert("Vui lòng chuyển sang mạng Sepolia!");
-            return;
-        }
-
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-
-        status.innerHTML = "⏳ Đang cập nhật thời gian bỏ phiếu trên blockchain...";
-
-        // 🧩 Gọi hàm trên smart contract
-        const tx = await contractInstance.setVotingTime(start, end);
-        await tx.wait();
-
-        // 🟢 Hoàn tất
-        status.innerHTML = "✅ Thời gian bỏ phiếu đã được cập nhật trên blockchain!";
-
-        // 🔄 Làm mới countdown
-        await displayRemainingTime();
-
-    } catch (error) {
-        console.error("Lỗi khi cập nhật thời gian:", error);
-        if (error.message.includes("Only owner")) {
-            status.innerHTML = "❌ Bạn không có quyền cập nhật thời gian (chỉ chủ sở hữu mới được phép).";
-        } else {
-            status.innerHTML = "❌ Có lỗi xảy ra khi cập nhật thời gian. Xem console để biết chi tiết.";
-        }
-    }
+    status.innerHTML = "Setting time...";
+    const tx = await contract.setVotingTime(start, end);
+    await tx.wait();
+    status.innerHTML = "Time set!";
+    displayRemainingTime();
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error setting time (owner only?)";
+  }
 }
 
+// Hiển thị countdown
+async function displayRemainingTime() {
+  const countdownElement = document.getElementById("countdown");
 
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
+    const endTime = await contract.endTime();
+    const currentTime = Math.floor(Date.now() / 1000);
+    let remainingSeconds = endTime - currentTime;
+
+    const updateCountdown = () => {
+      if (remainingSeconds <= 0) {
+        countdownElement.innerHTML = "Voting ended!";
+        return;
+      }
+      const days = Math.floor(remainingSeconds / 86400);
+      const hours = Math.floor((remainingSeconds % 86400) / 3600);
+      const minutes = Math.floor((remainingSeconds % 3600) / 60);
+      const seconds = remainingSeconds % 60;
+      countdownElement.innerHTML = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      remainingSeconds--;
+    };
+
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  } catch (error) {
+    console.error(error);
+    countdownElement.innerHTML = "Error loading countdown";
+  }
+}
+
+// Get winner
+async function showWinner() {
+  const winnerInfo = document.getElementById("winnerInfo");
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
+
+    const [winner, votes] = await contract.getWinner();
+    winnerInfo.innerHTML = `Winner: ${winner} with ${votes} votes`;
+  } catch (error) {
+    console.error(error);
+    winnerInfo.innerHTML = "Error getting winner";
+  }
+}
+
+// Draw chart
 async function drawVoteChart() {
-    const status = document.getElementById("chartStatus");
-    status.innerHTML = "⏳ Đang tải dữ liệu phiếu bầu...";
+  const ctx = document.getElementById("voteChart").getContext("2d");
+  const status = document.getElementById("chartStatus");
 
-    if (!window.ethereum) {
-        alert("Vui lòng cài đặt MetaMask!");
-        return;
-    }
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
-    try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = provider.getSigner();
+    const candidates = await contract.getCandidates();
+    const names = candidates.map(c => c.name);
+    const votes = candidates.map(c => parseInt(c.voteCount));
 
-        const network = await provider.getNetwork();
-        if (network.chainId !== 11155111) {
-            alert("Vui lòng chuyển sang mạng Sepolia!");
-            return;
-        }
+    if (window.voteChartInstance) window.voteChartInstance.destroy();
 
-        const contractInstance = new ethers.Contract(contractAddress, contractAbi, signer);
-
-        // 🗳️ Lấy danh sách ứng viên & số phiếu
-        const [names, votes] = await contractInstance.getAllVotesOfCandidates();
-
-        // 🔄 Nếu không có ứng viên
-        if (names.length === 0) {
-            status.innerHTML = "⚠️ Chưa có ứng viên để hiển thị!";
-            return;
-        }
-
-        // ✅ Chuẩn bị dữ liệu cho biểu đồ
-        const ctx = document.getElementById("voteChart").getContext("2d");
-
-        // Xóa biểu đồ cũ nếu có
-        if (window.voteChartInstance) {
-            window.voteChartInstance.destroy();
-        }
-
-        window.voteChartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: names,
-                datasets: [{
-                    label: 'Số lượng phiếu bầu',
-                    data: votes.map(v => parseInt(v)), // chuyển BigNumber thành số
-                    borderWidth: 2,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Số phiếu'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Ứng viên'
-                        }
-                    }
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        text: '📊 Biểu đồ kết quả bầu chọn'
-                    },
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-
-        status.innerHTML = "✅ Đã hiển thị biểu đồ kết quả bầu chọn!";
-    } catch (error) {
-        console.error("Lỗi khi vẽ biểu đồ:", error);
-        status.innerHTML = "❌ Lỗi khi tải dữ liệu biểu đồ. Xem console để biết chi tiết.";
-    }
+    window.voteChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: names,
+        datasets: [{
+          label: 'Votes',
+          data: votes,
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        }]
+      },
+      options: { responsive: true }
+    });
+    status.innerHTML = "Chart loaded!";
+  } catch (error) {
+    console.error(error);
+    status.innerHTML = "Error loading chart";
+  }
 }
 
+// Get voters (for ListVoters.html)
+async function getAllVoters() {
+  const tableBody = document.querySelector("#votersTable tbody"); // Giả sử có table id="votersTable"
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const contract = new ethers.Contract(contractAddress, contractAbi, provider);
 
-// Tự động gọi khi trang load
-window.onload = function() {
-    displayRemainingTime();  
-    drawVoteChart();
-    showWinner();
+    const voters = await contract.getVoters();
+
+    voters.forEach((voter, index) => {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td>${index + 1}</td><td>${voter}</td>`;
+      tableBody.appendChild(row);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Reset election (owner only)
+async function resetElection() {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+    const tx = await contract.resetElection();
+    await tx.wait();
+    alert("Election reset!");
+  } catch (error) {
+    console.error(error);
+    alert("Error resetting (owner only?)");
+  }
+}
+
+// Withdraw tokens (owner only)
+async function withdrawTokens() {
+  const amount = prompt("Enter amount to withdraw");
+  if (!amount) return;
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+    const tx = await contract.withdrawToken(amount);
+    await tx.wait();
+    alert("Withdrawn!");
+  } catch (error) {
+    console.error(error);
+    alert("Error withdrawing (owner only?)");
+  }
+}
+
+// Pause (owner only)
+async function togglePause(status) {
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+    const tx = await contract.pause(status);
+    await tx.wait();
+    alert(`Pause set to ${status}`);
+  } catch (error) {
+    console.error(error);
+    alert("Error pausing (owner only?)");
+  }
+}
+
+// Approve tokens for voting (owner only)
+async function approveTokens() {
+  const status = document.getElementById("approveStatus");
+  if (!WALLET_CONNECTED) return alert("Connect wallet first!");
+
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const contract = new ethers.Contract(contractAddress, contractAbi, signer);
+
+    status.innerHTML = "Approving 11 tokens... (Confirm in MetaMask)";
+
+    // Approve 11 tokens (maxVoters = 11)
+    const amount = ethers.BigNumber.from(11);
+    const tx = await contract.approve(contractAddress, amount); // spender = contract itself
+    await tx.wait();
+
+    status.innerHTML = "✅ Approved 11 tokens! Now voting works.";
+  } catch (error) {
+    console.error(error);
+    if (error.message.includes("Only owner")) {
+      status.innerHTML = "❌ Only owner can approve!";
+    } else {
+      status.innerHTML = "❌ Error approving. Check if you are owner.";
+    }
+  }
+}
+
+// Load on page
+window.onload = () => {
+  displayRemainingTime();
+  drawVoteChart();
+  // Gọi getAllVoters() nếu trên ListVoters.html
 };

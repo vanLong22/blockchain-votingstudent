@@ -1,52 +1,48 @@
-// const { ethers } = require("hardhat");
-
-// async function main() {
-//   const Voting = await ethers.getContractFactory("Voting");
-  
-//   const candidateNames = ["Nguyen Van A", "Tran Thi B", "Le Van C"];
-//   const durationInMinutes = 5;
-
-//   // Deploy contract
-//   const voting = await Voting.deploy(candidateNames, durationInMinutes, 1000);
-//   await voting.waitForDeployment(); // Chờ deploy hoàn tất
-
-//   // Lấy địa chỉ contract
-//   const contractAddress = await voting.getAddress();
-//   console.log("✅ Voting contract deployed to:", contractAddress);
-// }
-
-// main().catch((error) => {
-//   console.error("❌ Deployment failed:", error);
-//   process.exitCode = 1;
-// });
-
-const { ethers } = require("hardhat");
-const pool = require("D:/2022-2026/HOC KI 7/BLOCK CHAIN/votingstudents/db");
+const { ethers, run } = require("hardhat");
+require("dotenv").config();
 
 async function main() {
-  // 🔹 Lấy danh sách ứng viên từ MySQL
-  const [rows] = await pool.query("SELECT name FROM candidates");
-  const candidateNames = rows.map(row => row.name);
+  console.log("Bắt đầu deploy VotingExtended contract...\n");
 
-  if (candidateNames.length === 0) {
-    console.error("⚠️ No candidates found in database!");
-    process.exit(1);
+  // Không cần parameters nữa
+  console.log("Deploying without initial candidates/voters (defaults in constructor)...");
+
+  const VotingExtended = await ethers.getContractFactory("VotingExtended");
+  const voting = await VotingExtended.deploy();
+
+  await voting.waitForDeployment();
+  const contractAddress = await voting.getAddress();
+
+  console.log("DEPLOY THÀNH CÔNG!");
+  console.log(`Contract address: ${contractAddress}`);
+  console.log(`Etherscan: https://sepolia.etherscan.io/address/${contractAddress}`);
+
+  // TỰ ĐỘNG VERIFY TRÊN ETHERSCAN
+  console.log("\nĐang verify contract trên Etherscan... (chờ ~30s)");
+
+  try {
+    await run("verify:verify", {
+      address: contractAddress,
+      constructorArguments: [], // Không có args
+    });
+    console.log("VERIFY THÀNH CÔNG! Contract đã được xác minh");
+    console.log(`Link: https://sepolia.etherscan.io/address/${contractAddress}#code`);
+  } catch (error) {
+    if (error.message.toLowerCase().includes("already verified")) {
+      console.log("Contract đã được verify trước đó rồi!");
+    } else {
+      console.warn("Verify tự động thất bại (vẫn bình thường trên Sepolia):");
+      console.warn("Bạn có thể verify thủ công sau tại: https://sepolia.etherscan.io/verifyContract");
+    }
   }
 
-  const Voting = await ethers.getContractFactory("Voting");
-  const durationInMinutes = 10080;
-
-  // 🔹 Deploy contract
-  console.log("🚀 Deploying contract with candidates:", candidateNames);
-  const voting = await Voting.deploy(candidateNames, durationInMinutes, 1000);
-  await voting.waitForDeployment();
-
-  // 🔹 Hiển thị địa chỉ contract
-  const contractAddress = await voting.getAddress();
-  console.log("✅ Voting contract deployed to:", contractAddress);
+  console.log("\nHOÀN TẤT! Copy contractAddress vào main.js và triển khai web.");
 }
 
-main().catch((error) => {
-  console.error("❌ Deployment failed:", error);
-  process.exitCode = 1;
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("\nDEPLOY THẤT BẠI:");
+    console.error(error);
+    process.exit(1);
+  });

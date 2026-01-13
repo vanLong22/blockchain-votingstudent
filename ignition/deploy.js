@@ -2,13 +2,13 @@ const { ethers, run } = require("hardhat");
 require("dotenv").config();
 
 async function main() {
-  console.log("Bắt đầu deploy VotingExtended contract...\n");
+  console.log("Bắt đầu deploy VotingToken contract...\n");
 
   // Không cần parameters nữa
   console.log("Deploying without initial candidates/voters (defaults in constructor)...");
 
-  const VotingExtended = await ethers.getContractFactory("VotingExtended");
-  const voting = await VotingExtended.deploy();
+  const VotingToken = await ethers.getContractFactory("VotingToken");
+  const voting = await VotingToken.deploy();
 
   await voting.waitForDeployment();
   const contractAddress = await voting.getAddress();

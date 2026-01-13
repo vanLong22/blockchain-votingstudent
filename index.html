@@ -1,9 +1,9 @@
-<<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QNU StarVote - Decentralized Voting Platform</title>
+    <title>QNU StarVote - Người Bỏ Phiếu</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.1/dist/ethers.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -595,10 +595,80 @@
                 font-size: 32px;
             }
         }
+        
+        /* CSS giữ nguyên như ban đầu, thêm một số style mới */
+        .vote-limits {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .limit-card {
+            background: var(--secondary-light);
+            padding: 15px;
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+        
+        .limit-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 5px 0;
+        }
+        
+        .limit-label {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+        
+        .buy-token-section {
+            background: linear-gradient(135deg, rgba(42, 98, 61, 0.1), rgba(42, 98, 61, 0.05));
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(42, 98, 61, 0.3);
+        }
+
+        .vote-stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .candidates-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .candidate {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .vote-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .vote-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
-    <!-- Header với Navigation -->
     <header class="header">
         <div class="nav-container">
             <div class="logo">
@@ -613,84 +683,68 @@
                 </div>
                 <div class="nav-item" onclick="showSection('vote')">
                     <i class="fas fa-vote-yea"></i>
-                    <span>Vote</span>
+                    <span>Bỏ Phiếu</span>
                 </div>
                 <div class="nav-item" onclick="showSection('candidates')">
                     <i class="fas fa-users"></i>
-                    <span>Candidates</span>
+                    <span>Ứng Viên</span>
                 </div>
                 <div class="nav-item" onclick="showSection('results')">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Results</span>
+                    <span>Kết Quả</span>
                 </div>
                 <div class="nav-item" onclick="showSection('tokens')">
                     <i class="fas fa-coins"></i>
-                    <span>Tokens</span>
-                </div>
-                <div class="nav-item" onclick="showSection('admin')">
-                    <i class="fas fa-cog"></i>
-                    <span>Admin</span>
+                    <span>Token</span>
                 </div>
             </nav>
             
             <div class="wallet-container">
                 <div class="wallet-status">
                     <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText">Not Connected</span>
+                    <span id="statusText">Chưa kết nối</span>
                     <span class="wallet-address" id="walletAddress" style="display:none;"></span>
                 </div>
                 <button class="btn-connect" onclick="connectWallet()">
                     <i class="fas fa-wallet"></i>
-                    <span>Connect Wallet</span>
+                    <span>Kết nối Ví</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="main-container">
         <!-- Dashboard Section -->
         <section id="dashboard" class="content-section active">
-            <h1 class="dashboard-title">Voting Dashboard</h1>
-            <p class="dashboard-subtitle">Real-time decentralized voting powered by blockchain</p>
+            <h1 class="dashboard-title">Bảng Điều Khiển</h1>
+            <p class="dashboard-subtitle">Hệ thống bỏ phiếu phi tập trung dựa trên blockchain</p>
             
-            <!-- Statistics Overview -->
-            <div class="dashboard-overview">
-                <div class="stat-card">
-                    <i class="fas fa-users stat-icon"></i>
-                    <div class="stat-value" id="totalCandidates">0</div>
-                    <div class="stat-label">Total Candidates</div>
+            <!-- Thống kê -->
+            <div class="vote-stats">
+                <div class="stat-item">
+                    <h3>Tổng phiếu bầu</h3>
+                    <p id="totalVotes">0</p>
                 </div>
-                
-                <div class="stat-card">
-                    <i class="fas fa-vote-yea stat-icon"></i>
-                    <div class="stat-value" id="totalVotes">0</div>
-                    <div class="stat-label">Total Votes Cast</div>
+                <div class="stat-item">
+                    <h3>Số Ứng viên</h3>
+                    <p id="totalCandidates">0</p>
                 </div>
-                
-                <div class="stat-card">
-                    <i class="fas fa-clock stat-icon"></i>
-                    <div class="stat-value" id="votingStatusText">--</div>
-                    <div class="stat-label">Voting Status</div>
-                </div>
-                
-                <div class="stat-card">
-                    <i class="fas fa-coins stat-icon"></i>
-                    <div class="stat-value" id="yourTokenBalance">0</div>
-                    <div class="stat-label">Your Tokens</div>
+                <div class="stat-item">
+                    <h3>Trạng thái bầu cử</h3>
+                    <p id="electionStatus">Chưa bắt đầu</p>
                 </div>
             </div>
             
-            <!-- Token Information -->
+            <!-- Thông tin token cá nhân -->
             <div class="token-info">
-                <div class="token-balance" id="tokenBalanceDisplay">0</div>
-                <div class="token-label">Your Voting Token Balance</div>
+                <div class="token-balance" id="yourTokenBalance">0</div>
+                <div class="token-label">Số token của bạn</div>
                 <div class="token-actions">
                     <button class="btn btn-primary" onclick="showSection('tokens')">
-                        <i class="fas fa-coins"></i> Manage Tokens
+                        <i class="fas fa-coins"></i> Quản lý Token
                     </button>
-                    <button class="btn btn-secondary" onclick="checkTokenAllowance()">
-                        <i class="fas fa-check-circle"></i> Check Allowance
+                    <button class="btn btn-secondary" onclick="showSection('vote')">
+                        <i class="fas fa-vote-yea"></i> Bỏ phiếu ngay
                     </button>
                 </div>
             </div>
@@ -698,61 +752,62 @@
             <!-- Countdown Timer -->
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-hourglass-half"></i> Voting Countdown</h2>
+                    <h2 class="card-title"><i class="fas fa-hourglass-half"></i> Thời gian còn lại</h2>
                 </div>
                 <div class="countdown-timer">
                     <div class="time-unit">
                         <div class="time-value" id="days">00</div>
-                        <div class="time-label">Days</div>
+                        <div class="time-label">Ngày</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="hours">00</div>
-                        <div class="time-label">Hours</div>
+                        <div class="time-label">Giờ</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="minutes">00</div>
-                        <div class="time-label">Minutes</div>
+                        <div class="time-label">Phút</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="seconds">00</div>
-                        <div class="time-label">Seconds</div>
+                        <div class="time-label">Giây</div>
                     </div>
                 </div>
-                <p class="countdown-status" id="countdownStatus">Loading voting period...</p>
+                <p class="countdown-status" id="countdownStatus">Đang tải thời gian...</p>
             </div>
             
             <!-- Quick Actions -->
             <div class="content-grid">
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-bolt"></i> Quick Actions</h2>
+                        <h2 class="card-title"><i class="fas fa-bolt"></i> Hành động nhanh</h2>
                     </div>
                     <div class="btn-group">
                         <button class="btn btn-primary" onclick="showSection('vote')">
-                            <i class="fas fa-vote-yea"></i> Cast Your Vote
+                            <i class="fas fa-vote-yea"></i> Bỏ Phiếu
                         </button>
                         <button class="btn btn-secondary" onclick="showSection('results')">
-                            <i class="fas fa-chart-bar"></i> View Results
+                            <i class="fas fa-chart-bar"></i> Xem Kết Quả
                         </button>
-                        <button class="btn btn-secondary" onclick="getAllCandidates(); drawVoteChart(); updateDashboardData();">
-                            <i class="fas fa-sync-alt"></i> Refresh Data
+                        <button class="btn btn-secondary" onclick="getAllCandidates(); updateVotingInfo();">
+                            <i class="fas fa-sync-alt"></i> Làm mới
                         </button>
                     </div>
                 </div>
                 
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-info-circle"></i> Voting Information</h2>
+                        <h2 class="card-title"><i class="fas fa-info-circle"></i> Thông tin bỏ phiếu</h2>
                     </div>
                     <div class="voting-info">
-                        <p>To vote, you need:</p>
+                        <p>Để bỏ phiếu, bạn cần:</p>
                         <ol>
-                            <li>Connect your wallet</li>
-                            <li>Have voting tokens (1 token = 1 vote)</li>
-                            <li>Approve tokens for voting contract</li>
-                            <li>Voting period must be active</li>
-                            <li>Each address can vote only once</li>
+                            <li>Kết nối ví MetaMask</li>
+                            <li>Có ít nhất 1 token VOTE</li>
+                            <li>Chưa bỏ phiếu trong đợt này</li>
+                            <li>Thời gian bỏ phiếu đang hoạt động</li>
+                            <li>Chưa đạt giới hạn phiếu tối đa</li>
                         </ol>
+                        <p><strong>Lưu ý:</strong> Mỗi phiếu = 1 token</p>
                     </div>
                 </div>
             </div>
@@ -762,67 +817,71 @@
         <section id="vote" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-vote-yea"></i> Cast Your Vote</h2>
-                    <div class="badge">1 Token Required</div>
+                    <h2 class="card-title"><i class="fas fa-vote-yea"></i> Bỏ Phiếu</h2>
+                    <div class="badge">1 Token = 1 Phiếu</div>
                 </div>
                 
-                <!-- Token Status -->
-                <div class="token-info" id="voteTokenStatus" style="display: none;">
+                <!-- Thông tin token -->
+                <div class="token-info">
                     <div class="token-balance" id="voteTokenBalance">0</div>
-                    <div class="token-label">Tokens Available for Voting</div>
-                    <div id="tokenAllowanceInfo" class="allowance-info"></div>
+                    <div class="token-label">Token khả dụng để bỏ phiếu</div>
+                    <div id="voteStatus" class="token-message"></div>
                 </div>
                 
+                <!-- Điều kiện bỏ phiếu -->
                 <div id="voteRequirements" class="requirements" style="display: none;"></div>
                 
+                <!-- Form bỏ phiếu -->
                 <div class="form-group">
-                    <label class="form-label">Candidate Name</label>
-                    <input type="text" class="form-control" id="voteName" placeholder="Enter candidate name to vote for">
+                    <label class="form-label">Tên ứng viên</label>
+                    <input type="text" class="form-control" id="voteName" placeholder="Nhập tên ứng viên bạn muốn bầu">
                     <small class="form-help">
-                        Enter the exact name of the candidate as listed
+                        Nhập chính xác tên ứng viên như trong danh sách
                     </small>
                 </div>
                 
+                <!-- Thời gian còn lại -->
                 <div class="countdown-timer vote-timer">
                     <div class="time-unit">
                         <div class="time-value" id="voteDays">00</div>
-                        <div class="time-label">Days</div>
+                        <div class="time-label">Ngày</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="voteHours">00</div>
-                        <div class="time-label">Hours</div>
+                        <div class="time-label">Giờ</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="voteMinutes">00</div>
-                        <div class="time-label">Minutes</div>
+                        <div class="time-label">Phút</div>
                     </div>
                     <div class="time-unit">
                         <div class="time-value" id="voteSeconds">00</div>
-                        <div class="time-label">Seconds</div>
+                        <div class="time-label">Giây</div>
                     </div>
                 </div>
                 
+                <!-- Nút hành động -->
                 <div class="btn-group">
                     <button class="btn btn-primary" onclick="vote()" id="voteButton">
-                        <i class="fas fa-vote-yea"></i> Submit Vote
+                        <i class="fas fa-vote-yea"></i> Bỏ phiếu
                     </button>
                     <button class="btn btn-secondary" onclick="getWinner()">
-                        <i class="fas fa-trophy"></i> View Winner
+                        <i class="fas fa-trophy"></i> Xem người chiến thắng
                     </button>
                     <button class="btn btn-secondary" onclick="checkVotingEligibility()">
-                        <i class="fas fa-check-circle"></i> Check Eligibility
+                        <i class="fas fa-check-circle"></i> Kiểm tra điều kiện
                     </button>
                 </div>
                 
+                <!-- Thông báo trạng thái -->
                 <div id="voteStatusNotification" class="notification" style="display: none;"></div>
                 
+                <!-- Thông tin người chiến thắng -->
                 <div id="winnerInfo" class="card winner-card" style="margin-top: 20px; display: none;">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-trophy"></i> Current Winner</h2>
+                        <h2 class="card-title"><i class="fas fa-trophy"></i> Người chiến thắng hiện tại</h2>
                     </div>
-                    <div id="winnerContent" class="winner-content">
-                        <!-- Winner content will be loaded here -->
-                    </div>
+                    <div id="winnerContent" class="winner-content"></div>
                 </div>
             </div>
         </section>
@@ -831,27 +890,25 @@
         <section id="candidates" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-users"></i> Candidates List</h2>
+                    <h2 class="card-title"><i class="fas fa-users"></i> Danh sách ứng viên</h2>
                     <button class="btn btn-secondary" onclick="getAllCandidates()">
-                        <i class="fas fa-sync-alt"></i> Refresh
+                        <i class="fas fa-sync-alt"></i> Làm mới
                     </button>
                 </div>
                 
-                <p id="p3" class="status-message"></p>
+                <p id="candidatesStatus" class="status-message"></p>
                 
                 <div class="table-container">
-                    <table class="table" id="myTable">
+                    <table class="table" id="candidatesTable">
                         <thead>
                             <tr>
                                 <th>ID</th>
-                                <th>Name</th>
-                                <th>Votes</th>
-                                <th>Status</th>
+                                <th>Tên</th>
+                                <th>Số phiếu</th>
+                                <th>Trạng thái</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- Candidates will be loaded here by getAllCandidates() -->
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
@@ -861,9 +918,9 @@
         <section id="results" class="content-section">
             <div class="card">
                 <div class="card-header">
-                    <h2 class="card-title"><i class="fas fa-chart-bar"></i> Voting Results</h2>
+                    <h2 class="card-title"><i class="fas fa-chart-bar"></i> Kết quả bỏ phiếu</h2>
                     <button class="btn btn-secondary" onclick="drawVoteChart()">
-                        <i class="fas fa-sync-alt"></i> Refresh Chart
+                        <i class="fas fa-sync-alt"></i> Làm mới biểu đồ
                     </button>
                 </div>
                 
@@ -875,7 +932,7 @@
                 
                 <div class="winner-action">
                     <button class="btn btn-primary btn-block" onclick="getWinner()">
-                        <i class="fas fa-trophy"></i> Show Current Winner
+                        <i class="fas fa-trophy"></i> Xem người chiến thắng
                     </button>
                 </div>
             </div>
@@ -884,207 +941,134 @@
         <!-- Tokens Section -->
         <section id="tokens" class="content-section">
             <div class="content-grid">
-                <!-- Token Balance & Allowance -->
+                <!-- Thông tin token -->
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-coins"></i> Your Token Status</h2>
+                        <h2 class="card-title"><i class="fas fa-coins"></i> Thông tin token của bạn</h2>
                     </div>
                     
                     <div class="token-info">
                         <div class="token-balance" id="tokenBalanceDetail">0</div>
-                        <div class="token-label">Total Token Balance</div>
+                        <div class="token-label">Số dư token VOTE</div>
                     </div>
                     
-                    <div class="allowance-section">
-                        <div class="form-group">
-                            <label class="form-label">Tokens Approved for Voting Contract</label>
-                            <div class="allowance-display">
-                                <div class="allowance-value">
-                                    <div class="allowance-number" id="tokenAllowanceDetail">0</div>
-                                    <div class="allowance-label">Allowance</div>
-                                </div>
-                                <button class="btn btn-secondary" onclick="checkTokenAllowance()">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                            </div>
-                        </div>
+                    <div class="token-details">
+                        <p><strong>1 Token VOTE = 1 Phiếu bầu</strong></p>
+                        <p>Mỗi lần bỏ phiếu sẽ sử dụng 1 token từ ví của bạn</p>
                     </div>
                     
                     <div class="btn-group">
-                        <button class="btn btn-primary" onclick="approveTokens()">
-                            <i class="fas fa-check-double"></i> Approve Tokens for Voting
+                        <button class="btn btn-primary" onclick="buyTokensPrompt()">
+                            <i class="fas fa-shopping-cart"></i> Mua token
                         </button>
-                        <button class="btn btn-secondary" onclick="refreshTokenInfo()">
-                            <i class="fas fa-redo"></i> Refresh All
+                        <button class="btn btn-secondary" onclick="loadTokenInfo()">
+                            <i class="fas fa-redo"></i> Làm mới
                         </button>
                     </div>
                 </div>
                 
-                <!-- Token Information -->
+                <!-- Mua token -->
+                <div class="card buy-token-section">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-shopping-cart"></i> Mua token</h2>
+                    </div>
+                    
+                    <div class="token-limit-warning" style="background: rgba(255, 193, 7, 0.1); padding: 10px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--warning-color);">
+                        <p style="margin: 0; color: var(--warning-color);">
+                            <i class="fas fa-exclamation-triangle"></i> <strong>Chú ý:</strong> Mỗi người chỉ được mua 1 token duy nhất
+                        </p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Số lượng token muốn mua</label>
+                        <input type="number" class="form-control" id="buyTokenAmount" min="1" max="1" value="1" readonly>
+                        <small class="form-help">
+                            Giá: 0.01 ETH/token (Mỗi người chỉ được mua 1 token)
+                        </small>
+                    </div>
+                    
+                    <div class="eth-calculation" id="ethCalculation" style="margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px;">
+                        <p>Tổng cộng: <span id="ethTotal">0.01</span> ETH</p>
+                    </div>
+                    
+                    <button class="btn btn-success btn-block" id="buyTokenButton" onclick="buyTokens(1)">
+                        <i class="fas fa-check-circle"></i> Mua token
+                    </button>
+                </div>
+                
+                <!-- Thông tin token -->
                 <div class="card">
                     <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-info-circle"></i> Token Information</h2>
+                        <h2 class="card-title"><i class="fas fa-info-circle"></i> Thông tin về token</h2>
                     </div>
                     
                     <div class="token-details">
                         <div class="token-detail">
                             <i class="fas fa-vote-yea token-detail-icon"></i>
                             <div>
-                                <h4>1 Token = 1 Vote</h4>
-                                <p>Each token gives you one voting right</p>
+                                <h4>1 Token = 1 Phiếu</h4>
+                                <p>Mỗi token cho bạn một quyền bỏ phiếu</p>
                             </div>
                         </div>
                         
                         <div class="token-detail">
-                            <i class="fas fa-handshake token-detail-icon"></i>
+                            <i class="fas fa-money-bill-wave token-detail-icon"></i>
                             <div>
-                                <h4>Approval Required</h4>
-                                <p>You must approve tokens before voting</p>
+                                <h4>Có thể mua bằng ETH</h4>
+                                <p>Token có thể mua với giá 0.01 ETH/token</p>
                             </div>
                         </div>
                         
                         <div class="token-detail">
                             <i class="fas fa-user-check token-detail-icon"></i>
                             <div>
-                                <h4>One Vote per Address</h4>
-                                <p>Each wallet address can vote only once</p>
+                                <h4>Một phiếu mỗi người</h4>
+                                <p>Mỗi địa chỉ chỉ được bỏ phiếu một lần</p>
                             </div>
                         </div>
                         
                         <div class="token-detail">
                             <i class="fas fa-exchange-alt token-detail-icon"></i>
                             <div>
-                                <h4>Transferable</h4>
-                                <p>Tokens can be transferred to other addresses</p>
+                                <h4>Có thể chuyển nhượng</h4>
+                                <p>Token có thể chuyển cho địa chỉ khác</p>
                             </div>
                         </div>
-                    </div>
-                </div>
-                
-                <!-- Token Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-cogs"></i> Token Actions</h2>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Approve Token Amount</label>
-                        <div class="amount-buttons">
-                            <button class="btn btn-secondary" onclick="setApproveAmount(1)">1 Token</button>
-                            <button class="btn btn-secondary" onclick="setApproveAmount(5)">5 Tokens</button>
-                            <button class="btn btn-secondary" onclick="setApproveAmount(10)">10 Tokens</button>
-                        </div>
-                        <input type="number" class="form-control" id="approveTokenAmount" min="1" value="1">
-                        <small class="form-help">
-                            Amount of tokens to approve for voting contract
-                        </small>
-                    </div>
-                    
-                    <button class="btn btn-success btn-block" onclick="approveTokens()" id="approveButton">
-                        <i class="fas fa-check-circle"></i> Approve Tokens
-                    </button>
-                    
-                    <div id="approveStatusNotification" class="notification" style="display: none; margin-top: 20px;"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Admin Section -->
-        <section id="admin" class="content-section">
-            <div class="content-grid">
-                <!-- Candidate Management -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-user-plus"></i> Manage Candidates</h2>
-                        <div class="badge owner">Owner Only</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Candidate Name</label>
-                        <input type="text" class="form-control" id="candidateName" placeholder="Enter candidate name">
-                    </div>
-                    
-                    <button class="btn btn-success btn-block" onclick="addCandidate(event)">
-                        <i class="fas fa-plus"></i> Add Candidate
-                    </button>
-                    
-                    <div class="admin-divider">
-                        <div class="form-group">
-                            <label class="form-label">Candidate ID to Disable</label>
-                            <input type="number" class="form-control" id="disableId" placeholder="Enter candidate ID">
-                        </div>
-                        <button class="btn btn-danger btn-block" onclick="disableCandidate(event)">
-                            <i class="fas fa-ban"></i> Disable Candidate
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Voting Time Settings -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-clock"></i> Set Voting Time</h2>
-                        <div class="badge owner">Owner Only</div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">Start Time</label>
-                        <input type="datetime-local" class="form-control" id="startTime">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label class="form-label">End Time</label>
-                        <input type="datetime-local" class="form-control" id="endTime">
-                    </div>
-                    
-                    <button class="btn btn-primary btn-block" onclick="setVotingTime(event)">
-                        <i class="fas fa-calendar-alt"></i> Update Voting Time
-                    </button>
-                </div>
-                
-                <!-- Admin Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title"><i class="fas fa-cogs"></i> Admin Actions</h2>
-                        <div class="badge owner">Owner Only</div>
-                    </div>
-                    
-                    <div class="btn-group">
-                        <button class="btn btn-secondary" onclick="resetElection()">
-                            <i class="fas fa-redo"></i> Reset Election
-                        </button>
-                        <button class="btn btn-secondary" onclick="withdrawTokens()">
-                            <i class="fas fa-coins"></i> Withdraw Tokens
-                        </button>
-                    </div>
-                    
-                    <div class="admin-divider">
-                        <div class="btn-group">
-                            <button class="btn btn-warning" onclick="pause(true)">
-                                <i class="fas fa-pause"></i> Pause Voting
-                            </button>
-                            <button class="btn btn-success" onclick="pause(false)">
-                                <i class="fas fa-play"></i> Resume Voting
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="admin-approve">
-                        <button class="btn btn-primary btn-block" onclick="approveTokens()">
-                            <i class="fas fa-check-double"></i> Approve Tokens for Voting
-                        </button>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
-        <p>QNU StarVote - Decentralized Voting Platform &copy; 2023</p>
-        <p class="footer-subtext">Powered by Ethereum Blockchain</p>
+        <p>QNU StarVote - Hệ thống bỏ phiếu phi tập trung &copy; 2024</p>
+        <p class="footer-subtext">Người dùng bỏ phiếu</p>
     </footer>
 
-    <!-- JavaScript Files -->
     <script src="main.js"></script>
+    <script>
+        // Tính ETH khi thay đổi số lượng token
+        document.getElementById('buyTokenAmount').addEventListener('input', function() {
+            const amount = parseInt(this.value) || 0;
+            const ethTotal = amount * 0.01;
+            document.getElementById('ethTotal').textContent = ethTotal.toFixed(2);
+        });
+        
+        // Hàm mua token với xác nhận
+        async function buyTokensPrompt() {
+            const amount = parseInt(document.getElementById('buyTokenAmount').value);
+            if (amount < 1) {
+                showNotification('Vui lòng nhập số lượng hợp lệ', 'error');
+                return;
+            }
+            
+            const ethAmount = amount * 0.01;
+            const confirmed = confirm(`Bạn có chắc chắn muốn mua ${amount} token với giá ${ethAmount} ETH?`);
+            
+            if (confirmed) {
+                await buyTokens(amount);
+            }
+        }
+    </script>
 </body>
 </html>

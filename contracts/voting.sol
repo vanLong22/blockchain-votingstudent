@@ -1,31 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/* ================= IMPORT OPENZEPPELIN ================= */
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
-/*
- * Voting + ERC20 Contract
- */
-contract VotingExtended is ERC20, Ownable {
-
-    /* ================= CONTROL ================= */
-    bool public paused;   
-
-    modifier whenNotPaused() {
-        require(!paused, "Contract dang tam dung");
-        _;
-    }
-
-    /* ================= VOTING ================= */
-    uint256 public constant ONE_TOKEN = 1;
-    uint256 public votersCount;
-    uint256 public maxVoters = 11;
-
-    uint256 public startTime;
-    uint256 public endTime;
-
+contract VotingToken is ERC20, Ownable, Pausable {    
+    // =========================
+    // STRUCTS
+    // =========================
     struct Candidate {
         uint256 id;
         string name;
@@ -33,106 +16,220 @@ contract VotingExtended is ERC20, Ownable {
         bool active;
     }
 
+    // =========================
+    // VOTING CONFIG
+    // =========================
+    uint256 public startTime;
+    uint256 public endTime;
+    uint256 public maxVotes; // 0 = không giới hạn
+    uint256 public votesCount;
+
+    // =========================
+    // CANDIDATES
+    // =========================
     uint256 public candidatesCount;
     mapping(uint256 => Candidate) public candidates;
     mapping(string => uint256) public nameToId;
 
+    // =========================
+    // VOTERS
+    // =========================
     mapping(address => bool) public hasVoted;
     mapping(address => uint256) public votedCandidate;
     address[] public votersList;
 
-    /* ================= EVENTS ================= */
+    // =========================
+    // EVENTS
+    // =========================
     event CandidateAdded(uint256 indexed id, string name);
     event CandidateDisabled(uint256 indexed id);
     event Voted(address indexed voter, string candidateName);
     event VotingTimeSet(uint256 start, uint256 end);
-    event Paused(bool status);
+    event MaxVotesSet(uint256 maxVotes);
     event ElectionReset();
+    event TokensDistributed(address indexed to, uint256 amount);
 
-    /* ================= CONSTRUCTOR ================= */
+    // =========================
+    // CONSTANTS
+    // =========================
+    uint256 public constant TOKEN_PRICE = 0.01 ether; // 0.01 ETH = 1 token
+    uint256 public constant VOTES_PER_TOKEN = 1;
+
+    // =========================
+    // CONSTRUCTOR (FIX OWNABLE)
+    // =========================
     constructor()
-        ERC20("Vote Token", "VOTE")
-        Ownable(msg.sender)
+        ERC20("VotingToken", "VOTE")
+        Ownable(msg.sender)  // Đúng với OpenZeppelin 5.x
+    {}
+    
+
+    // =========================
+    // MODIFIERS
+    // =========================
+    modifier onlyVotingPeriod() {
+        require(block.timestamp >= startTime && block.timestamp <= endTime, "Not voting period");
+        require(!paused(), "Voting is paused");
+        _;
+    }
+
+    modifier validCandidate(string memory _name) {
+        uint256 id = nameToId[_name];
+        require(id != 0, "Candidate does not exist");
+        require(candidates[id].active, "Candidate is not active");
+        _;
+    }
+
+    // =========================
+    // ADMIN FUNCTIONS
+    // =========================
+
+    // Phân phối token cho voters
+    function distributeTokens(address[] memory _recipients, uint256[] memory _amounts)
+        external
+        onlyOwner
     {
-        // Mint 1000 token cho owner
-        _mint(msg.sender, 1000);
+        require(_recipients.length == _amounts.length, "Length mismatch");
 
-        // Thêm ứng viên mặc định
-        _addCandidate("Van C");
-        _addCandidate("Van D");
-        _addCandidate("Van E");
+        for (uint256 i = 0; i < _recipients.length; i++) {
+            _mint(_recipients[i], _amounts[i] * 10 ** decimals());
+            emit TokensDistributed(_recipients[i], _amounts[i]);
+        }
     }
 
-    /* ================= PAUSE ================= */
-    function pause(bool status) external onlyOwner {
-        paused = status;
-        emit Paused(status);
-    }
+    // Thêm ứng viên
+    function addCandidate(string memory _name) external onlyOwner {
+        require(bytes(_name).length > 0, "Empty name");
+        require(nameToId[_name] == 0, "Candidate exists");
 
-    /* ================= TIME CONTROL ================= */
-    function setVotingTime(uint256 _start, uint256 _end) external onlyOwner {
-        require(_start < _end, "Thoi gian khong hop le");
-        startTime = _start;
-        endTime = _end;
-        emit VotingTimeSet(_start, _end);
-    }
-
-    /* ================= CANDIDATE ================= */
-    function _addCandidate(string memory name_) internal {
         candidatesCount++;
-        candidates[candidatesCount] = Candidate(
-            candidatesCount,
-            name_,
-            0,
-            true
-        );
-        nameToId[name_] = candidatesCount;
-        emit CandidateAdded(candidatesCount, name_);
+        candidates[candidatesCount] = Candidate({
+            id: candidatesCount,
+            name: _name,
+            voteCount: 0,
+            active: true
+        });
+
+        nameToId[_name] = candidatesCount;
+        emit CandidateAdded(candidatesCount, _name);
     }
 
-    function addCandidate(string memory name_) external onlyOwner {
-        require(nameToId[name_] == 0, "Ten da ton tai");
-        _addCandidate(name_);
+    // Vô hiệu hóa ứng viên
+    function disableCandidate(uint256 _id) external onlyOwner {
+        require(_id > 0 && _id <= candidatesCount, "Invalid ID");
+        require(candidates[_id].active, "Already disabled");
+
+        candidates[_id].active = false;
+        emit CandidateDisabled(_id);
     }
 
-    function disableCandidate(uint256 id) external onlyOwner {
-        require(candidates[id].active, "Ung vien da bi vo hieu");
-        candidates[id].active = false;
-        emit CandidateDisabled(id);
+    // Set thời gian voting
+    function setVotingTime(uint256 _startTime, uint256 _endTime) external onlyOwner {
+        require(_startTime >= block.timestamp, "Start must be future");
+        require(_endTime > _startTime, "End after start");
+        require(_endTime - _startTime >= 1 hours, "Too short");
+        require(_endTime - _startTime <= 30 days, "Too long");
+
+        startTime = _startTime;
+        endTime = _endTime;
+
+        emit VotingTimeSet(_startTime, _endTime);
     }
 
-    /* ================= VOTE ================= */
-    //mỗi lần có người vote, contract sẽ lấy 1 token từ ví Owner và giữ lại trong chính contract
-    function vote(string memory candidateName) external whenNotPaused {
-        require(block.timestamp >= startTime, "Chua toi thoi gian vote");
-        require(block.timestamp <= endTime, "Da het thoi gian vote");
-        require(votersCount < maxVoters, "Da du so nguoi vote");
-        require(!hasVoted[msg.sender], "Ban da vote");
+    // Set số phiếu tối đa
+    function setMaxVotes(uint256 _maxVotes) external onlyOwner {
+        require(_maxVotes == 0 || _maxVotes > votesCount, "Invalid maxVotes");
+        maxVotes = _maxVotes;
 
-        uint256 id = nameToId[candidateName];
-        require(id != 0, "Ung vien khong ton tai");
-        require(candidates[id].active, "Ung vien bi vo hieu");
+        emit MaxVotesSet(_maxVotes);
+    }
 
-        // Owner phải approve token trước
-        require(
-            allowance(owner(), address(this)) >= ONE_TOKEN,
-            "Owner chua approve"
-        );
+    // Pause / Resume
+    function setPaused(bool _paused) external onlyOwner {
+        if (_paused) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
 
-        // Sửa: Thay transferFrom bằng _spendAllowance và _transfer
-        _spendAllowance(owner(), address(this), ONE_TOKEN);
-        _transfer(owner(), address(this), ONE_TOKEN);
+    // Reset election
+    function resetElection() external onlyOwner {
+        for (uint256 i = 1; i <= candidatesCount; i++) {
+            candidates[i].voteCount = 0;
+        }
 
-        votersCount++;
+        for (uint256 i = 0; i < votersList.length; i++) {
+            hasVoted[votersList[i]] = false;
+            votedCandidate[votersList[i]] = 0;
+        }
+
+        delete votersList;
+        votesCount = 0;
+        startTime = 0;
+        endTime = 0;
+        maxVotes = 0;
+
+        if (paused()) {
+            _unpause();
+        }
+
+        emit ElectionReset();
+    }
+
+    // =========================
+    // USER FUNCTIONS
+    // =========================
+
+    // Mua token bằng ETH (FIX DECIMALS)
+    function buyTokens() external payable {
+        require(msg.value > 0, "Send ETH");
+        
+        // Tính số token dựa trên ETH gửi
+        uint256 tokenAmount = (msg.value * 10 ** decimals()) / TOKEN_PRICE;
+        require(tokenAmount > 0, "Not enough ETH");
+        
+        _mint(msg.sender, tokenAmount);
+    }
+
+    // Bỏ phiếu
+    function vote(string memory _candidateName)
+        external
+        onlyVotingPeriod
+        validCandidate(_candidateName)
+    {
+        require(!hasVoted[msg.sender], "Already voted");
+        require(balanceOf(msg.sender) >= 1 * 10 ** decimals(), "Not enough tokens");
+
+        if (maxVotes > 0) {
+            require(votesCount < maxVotes, "Max votes reached");
+        }
+
+        _transfer(msg.sender, address(this), 1 * 10 ** decimals());
+
+        uint256 candidateId = nameToId[_candidateName];
+        candidates[candidateId].voteCount++;
+
         hasVoted[msg.sender] = true;
-        votedCandidate[msg.sender] = id;
+        votedCandidate[msg.sender] = candidateId;
         votersList.push(msg.sender);
-        candidates[id].voteCount++;
+        votesCount++;
 
-        emit Voted(msg.sender, candidateName);
+        emit Voted(msg.sender, _candidateName);
+
+        if (maxVotes > 0 && votesCount >= maxVotes) {
+            _pause();
+        }
+
+        if (block.timestamp >= endTime) {
+            _pause();
+        }
     }
 
-    /* ================= VIEW ================= */
+    // =========================
+    // VIEW FUNCTIONS
+    // =========================
+
     function getCandidates() external view returns (Candidate[] memory) {
         Candidate[] memory list = new Candidate[](candidatesCount);
         for (uint256 i = 1; i <= candidatesCount; i++) {
@@ -141,48 +238,57 @@ contract VotingExtended is ERC20, Ownable {
         return list;
     }
 
-    function getWinner()
-        external
-        view
-        returns (string memory winner, uint256 votes)
-    {
-        for (uint256 i = 1; i <= candidatesCount; i++) {
-            if (
-                candidates[i].active &&
-                candidates[i].voteCount > votes
-            ) {
-                votes = candidates[i].voteCount;
-                winner = candidates[i].name;
-            }
-        }
-    }
-
     function getVoters() external view returns (address[] memory) {
         return votersList;
     }
 
-    /* ================= RESET ================= */
-    function resetElection() external onlyOwner {
-        for (uint256 i = 0; i < votersList.length; i++) {
-            hasVoted[votersList[i]] = false;
-            votedCandidate[votersList[i]] = 0;
-        }
-        delete votersList;
-        votersCount = 0;
+    function getWinner() external view returns (string memory winner, uint256 votes) {
+        uint256 highest = 0;
+        uint256 winnerId = 0;
 
         for (uint256 i = 1; i <= candidatesCount; i++) {
-            candidates[i].voteCount = 0;
+            if (candidates[i].active && candidates[i].voteCount > highest) {
+                highest = candidates[i].voteCount;
+                winnerId = i;
+            }
         }
 
-        emit ElectionReset();
+        if (winnerId == 0) {
+            return ("", 0);
+        }
+
+        return (candidates[winnerId].name, highest);
     }
 
-    /* ================= OWNER WITHDRAW ================= */
-    function withdrawToken(uint256 amount) external onlyOwner {
-        require(
-            balanceOf(address(this)) >= amount,
-            "Khong du token"
-        );
-        _transfer(address(this), owner(), amount);
+    function getVotingInfo() external view returns (
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        uint256,
+        bool
+    ) {
+        uint256 remaining = maxVotes > 0 ? maxVotes - votesCount : 0;
+
+        bool active = block.timestamp >= startTime &&
+                      block.timestamp <= endTime &&
+                      !paused();
+
+        return (startTime, endTime, maxVotes, votesCount, remaining, active);
+    }
+
+    // =========================
+    // WITHDRAW
+    // =========================
+
+    function withdrawETH() external onlyOwner {
+        uint256 bal = address(this).balance;
+        require(bal > 0, "No ETH");
+        payable(owner()).transfer(bal);
+    }
+
+    function withdrawTokens(uint256 _amount) external onlyOwner {
+        require(balanceOf(address(this)) >= _amount, "Not enough tokens");
+        _transfer(address(this), owner(), _amount);
     }
 }

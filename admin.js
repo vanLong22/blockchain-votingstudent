@@ -1502,17 +1502,26 @@ async function distributeTokensAdmin() {
         }
     }
     
-    // Validate số lượng
+    // Validate số lượng - CHỈ ĐƯỢC PHÂN PHỐI 1 TOKEN
     const amountsNum = amounts.map(amt => {
         const num = parseInt(amt);
-        if (isNaN(num) || num <= 0) {
-            throw new Error(`Số lượng không hợp lệ: ${amt}`);
+        if (isNaN(num) || num !== 1) {
+            throw new Error(`Mỗi người chỉ được phân phối 1 token: ${amt}`);
         }
         return num;
     });
     
     try {
         const contract = getContract(true);
+        
+        // Kiểm tra từng địa chỉ xem đã có token chưa
+        for (let i = 0; i < addresses.length; i++) {
+            const hasPurchased = await contract.hasPurchased(addresses[i]);
+            if (hasPurchased) {
+                showNotification(`Địa chỉ ${addresses[i]} đã có token, không thể phân phối thêm`, 'error');
+                return;
+            }
+        }
         
         if (statusElement) {
             statusElement.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang phân phối token cho ${addresses.length} địa chỉ...`;
@@ -1530,7 +1539,6 @@ async function distributeTokensAdmin() {
         }
         
         showNotification(`Đã phân phối token cho ${addresses.length} địa chỉ`, 'success');
-        refreshTokenStats();
         
     } catch (error) {
         console.error('Error distributing tokens:', error);
@@ -1569,7 +1577,7 @@ async function refreshTokenStats() {
         console.error('Error refreshing token stats:', error);
     }
 }
-
+/*
 // Rút token (admin)
 async function withdrawTokensAdmin() {
     if (!await checkAdminPermission()) {
@@ -1643,7 +1651,8 @@ async function withdrawETHAdmin() {
         showNotification('Lỗi rút ETH: ' + error.message, 'error');
     }
 }
-
+*/
+/*
 // Tạm dừng khẩn cấp
 async function emergencyPause() {
     if (!await checkAdminPermission()) {
@@ -1678,7 +1687,7 @@ async function emergencyPause() {
         showNotification('Lỗi tạm dừng khẩn cấp: ' + error.message, 'error');
     }
 }
-
+*/
 // Reset election (admin)
 async function resetElectionAdmin() {
     if (!await checkAdminPermission()) {

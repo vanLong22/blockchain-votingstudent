@@ -39,6 +39,11 @@ contract VotingToken is ERC20, Ownable, Pausable {
     address[] public votersList;
 
     // =========================
+    // TOKEN PURCHASE TRACKING
+    // =========================
+    mapping(address => bool) public hasPurchased; // Theo dõi ai đã mua token
+
+    // =========================
     // EVENTS
     // =========================
     event CandidateAdded(uint256 indexed id, string name);
@@ -48,6 +53,8 @@ contract VotingToken is ERC20, Ownable, Pausable {
     event MaxVotesSet(uint256 maxVotes);
     event ElectionReset();
     event TokensDistributed(address indexed to, uint256 amount);
+    event TokenPurchased(address indexed buyer, uint256 amount);
+    event AllCandidatesCleared();
 
     // =========================
     // CONSTANTS
@@ -84,7 +91,7 @@ contract VotingToken is ERC20, Ownable, Pausable {
     // ADMIN FUNCTIONS
     // =========================
 
-    // Phân phối token cho voters
+    // Phân phối token cho voters - MỖI NGƯỜI CHỈ 1 TOKEN
     function distributeTokens(address[] memory _recipients, uint256[] memory _amounts)
         external
         onlyOwner
@@ -92,7 +99,11 @@ contract VotingToken is ERC20, Ownable, Pausable {
         require(_recipients.length == _amounts.length, "Length mismatch");
 
         for (uint256 i = 0; i < _recipients.length; i++) {
+            require(!hasPurchased[_recipients[i]], "Recipient has already purchased a token");
+            require(_amounts[i] == 1, "Can only distribute 1 token per recipient");
+
             _mint(_recipients[i], _amounts[i] * 10 ** decimals());
+            hasPurchased[_recipients[i]] = true; // Đánh dấu đã có token
             emit TokensDistributed(_recipients[i], _amounts[i]);
         }
     }
@@ -153,23 +164,40 @@ contract VotingToken is ERC20, Ownable, Pausable {
         }
     }
 
-    // Reset election
-    function resetElection() external onlyOwner {
+    // Xóa tất cả ứng viên (internal)
+    function _clearAllCandidates() internal {
         for (uint256 i = 1; i <= candidatesCount; i++) {
-            candidates[i].voteCount = 0;
+            if (bytes(candidates[i].name).length > 0) {
+                delete nameToId[candidates[i].name];
+            }
+            delete candidates[i];
         }
+        candidatesCount = 0;
+        emit AllCandidatesCleared();
+    }
 
+    // Reset election - XÓA TẤT CẢ ỨNG VIÊN
+    function resetElection() external onlyOwner {
+        // 1. Xóa tất cả ứng viên
+        _clearAllCandidates();
+        
+        // 2. Reset tất cả người vote
         for (uint256 i = 0; i < votersList.length; i++) {
             hasVoted[votersList[i]] = false;
             votedCandidate[votersList[i]] = 0;
+            // KHÔNG xóa hasPurchased để giữ quy tắc 1 token/người
         }
 
+        // 3. Reset mảng voters
         delete votersList;
         votesCount = 0;
+        
+        // 4. Reset thời gian và giới hạn
         startTime = 0;
         endTime = 0;
         maxVotes = 0;
 
+        // 5. Unpause nếu đang paused
         if (paused()) {
             _unpause();
         }
@@ -181,15 +209,19 @@ contract VotingToken is ERC20, Ownable, Pausable {
     // USER FUNCTIONS
     // =========================
 
-    // Mua token bằng ETH (FIX DECIMALS)
+    // Mua token bằng ETH - CHỈ ĐƯỢC MUA 1 LẦN
     function buyTokens() external payable {
         require(msg.value > 0, "Send ETH");
+        require(!hasPurchased[msg.sender], "You have already purchased a token");
         
         // Tính số token dựa trên ETH gửi
         uint256 tokenAmount = (msg.value * 10 ** decimals()) / TOKEN_PRICE;
         require(tokenAmount > 0, "Not enough ETH");
         
         _mint(msg.sender, tokenAmount);
+        hasPurchased[msg.sender] = true; // Đánh dấu đã mua token
+        
+        emit TokenPurchased(msg.sender, tokenAmount);
     }
 
     // Bỏ phiếu
@@ -275,20 +307,5 @@ contract VotingToken is ERC20, Ownable, Pausable {
                       !paused();
 
         return (startTime, endTime, maxVotes, votesCount, remaining, active);
-    }
-
-    // =========================
-    // WITHDRAW
-    // =========================
-
-    function withdrawETH() external onlyOwner {
-        uint256 bal = address(this).balance;
-        require(bal > 0, "No ETH");
-        payable(owner()).transfer(bal);
-    }
-
-    function withdrawTokens(uint256 _amount) external onlyOwner {
-        require(balanceOf(address(this)) >= _amount, "Not enough tokens");
-        _transfer(address(this), owner(), _amount);
     }
 }

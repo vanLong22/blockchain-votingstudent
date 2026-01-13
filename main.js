@@ -1256,13 +1256,19 @@ async function loadTokenInfo() {
         const contract = getContract();
         const balance = await contract.balanceOf(WALLET_CONNECTED);
         const decimals = await contract.decimals();
+        
+        // Chuyển đổi sang số thực và làm tròn với độ chính xác cao hơn
         userTokenBalance = parseFloat(ethers.utils.formatUnits(balance, decimals));
+        
+        // Làm tròn để tránh lỗi số học floating-point
+        // Làm tròn đến 6 chữ số thập phân
+        userTokenBalance = Math.round(userTokenBalance * 1000000) / 1000000;
         
         // Kiểm tra đã vote chưa
         const voted = await contract.hasVoted(WALLET_CONNECTED);
         hasVoted = voted;
         
-        // Kiểm tra đã mua token chưa
+        // Kiểm tra đã mua token chưa - SỬA: Sử dụng số đã làm tròn
         hasPurchasedToken = userTokenBalance >= 1;
         
         // Cập nhật UI
@@ -1283,7 +1289,7 @@ function updateTokenDisplay() {
     // Format số với 2 chữ số thập phân
     const formattedBalance = userTokenBalance.toLocaleString('vi-VN', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 4
     });
     
     // Dashboard
@@ -1321,46 +1327,112 @@ function updateTokenDisplay() {
 let hasPurchasedToken = false;
 // Mua token bằng ETH
 async function buyTokens(amount) {
-    if (!WALLET_CONNECTED) {
-        showNotification('Vui lòng kết nối ví trước', 'error');
-        return;
-    }
-    
-    // Kiểm tra đã mua token chưa
-    if (userTokenBalance >= 1) {
-        showNotification('Mỗi người chỉ được mua 1 token', 'error');
-        return;
-    }
-    
-    // Kiểm tra số lượng token
-    if (amount !== 1) {
-        showNotification('Mỗi người chỉ được mua 1 token duy nhất', 'error');
-        document.getElementById('buyTokenAmount').value = 1;
-        return;
-    }
-    
     try {
         const contract = getContract(true);
         
-        // Tính giá ETH (0.01 ETH per token)
+        // Kiểm tra xem người dùng đã mua token chưa
+        const hasAlreadyPurchased = await contract.hasPurchased(WALLET_CONNECTED);
+        if (hasAlreadyPurchased) {
+            showNotification('Bạn đã mua token rồi! Mỗi người chỉ được mua 1 token', 'error');
+            return;
+        }
+        
+        // Kiểm tra xem người dùng đã vote chưa
+        const hasVoted = await contract.hasVoted(WALLET_CONNECTED);
+        if (hasVoted) {
+            showNotification('Bạn đã vote rồi, không thể mua thêm token', 'error');
+            return;
+        }
+        
+        // Kiểm tra số dư token hiện tại
+        const balance = await contract.balanceOf(WALLET_CONNECTED);
+        if (balance > 0) {
+            showNotification('Bạn đã có token, không thể mua thêm', 'error');
+            return;
+        }
+        
+        // Tính ETH cần thiết
         const ethAmount = ethers.utils.parseEther((amount * 0.01).toString());
         
-        // Gọi hàm mua token
-        const tx = await contract.buyTokens({
-            value: ethAmount
-        });
+        showNotification(`Đang mua ${amount} token với giá ${amount * 0.01} ETH...`, 'info');
         
-        showNotification(`Đang mua ${amount} token...`, 'info');
-        
+        const tx = await contract.buyTokens({ value: ethAmount });
         await tx.wait();
         
-        showNotification(`Đã mua ${amount} token thành công!`, 'success');
-        hasPurchasedToken = true;
-        loadTokenInfo(); // Refresh token balance
+        showNotification(`Mua ${amount} token thành công!`, 'success');
+        loadTokenInfo();
         
     } catch (error) {
         console.error('Error buying tokens:', error);
         showNotification('Lỗi mua token: ' + error.message, 'error');
+    }
+}
+
+// Thêm vào main.js
+async function checkCanBuyTokens() {
+    try {
+        const contract = getContract();
+        
+        // 1. Kiểm tra đã mua token chưa
+        const hasAlreadyPurchased = await contract.hasPurchased(WALLET_CONNECTED);
+        if (hasAlreadyPurchased) {
+            return { canBuy: false, reason: "Bạn đã mua token rồi" };
+        }
+        
+        // 2. Kiểm tra đã vote chưa
+        const hasVotedUser = await contract.hasVoted(WALLET_CONNECTED);
+        if (hasVotedUser) {
+            return { canBuy: false, reason: "Bạn đã vote rồi" };
+        }
+        
+        // 3. Kiểm tra có token chưa
+        const balance = await contract.balanceOf(WALLET_CONNECTED);
+        if (balance > 0) {
+            return { canBuy: false, reason: "Bạn đã có token" };
+        }
+        
+        // 4. Kiểm tra hệ thống có paused không
+        const isPaused = await contract.paused();
+        if (isPaused) {
+            return { canBuy: false, reason: "Hệ thống đang tạm dừng" };
+        }
+        
+        // 5. Kiểm tra thời gian voting
+        const currentTime = Math.floor(Date.now() / 1000);
+        const startTime = await contract.startTime();
+        const endTime = await contract.endTime();
+        
+        if (startTime == 0 || endTime == 0) {
+            return { canBuy: false, reason: "Chưa thiết lập thời gian voting" };
+        }
+        
+        if (currentTime > endTime) {
+            return { canBuy: false, reason: "Đã hết thời gian voting" };
+        }
+        
+        return { canBuy: true, reason: "" };
+        
+    } catch (error) {
+        console.error("Error checking token purchase eligibility:", error);
+        return { canBuy: false, reason: "Lỗi kiểm tra" };
+    }
+}
+
+// Cập nhật giao diện khi load
+async function updateBuyTokenUI() {
+    const canBuy = await checkCanBuyTokens();
+    const buyButton = document.getElementById('buyTokenButton');
+    
+    if (buyButton) {
+        if (!canBuy.canBuy) {
+            buyButton.disabled = true;
+            buyButton.innerHTML = `<i class="fas fa-ban"></i> Không thể mua`;
+            buyButton.title = canBuy.reason;
+        } else {
+            buyButton.disabled = false;
+            buyButton.innerHTML = `<i class="fas fa-check-circle"></i> Mua token`;
+            buyButton.title = "Click để mua token";
+        }
     }
 }
 
@@ -1405,89 +1477,90 @@ function calculateETHRequired(amount) {
 
 // Kiểm tra điều kiện bỏ phiếu
 async function checkVotingEligibility() {
-    if (!WALLET_CONNECTED) {
-        showNotification('Vui lòng kết nối ví trước', 'error');
-        return { allMet: false, message: 'Chưa kết nối ví' };
-    }
-    
-    const requirements = document.getElementById('voteRequirements');
-    let html = '<h3 style="margin-bottom: 15px;">Điều kiện bỏ phiếu:</h3>';
-    let allMet = true;
-    let message = '';
-    
     try {
         const contract = getContract();
+        const currentTime = Math.floor(Date.now() / 1000);
+        const startTime = await contract.startTime();
+        const endTime = await contract.endTime();
+        const isPaused = await contract.paused();
+        const hasVotedUser = await contract.hasVoted(WALLET_CONNECTED);
         
-        // 1. Kiểm tra token balance
-        if (userTokenBalance >= 1) {
-            html += `<p style="color: var(--success-color);">
-                <i class="fas fa-check-circle"></i> Số dư token: ${userTokenBalance} (Tối thiểu: 1)
-            </p>`;
+        // Sử dụng số dư đã làm tròn từ biến toàn cục
+        // hoặc lấy mới và làm tròn
+        const balance = await contract.balanceOf(WALLET_CONNECTED);
+        const decimals = await contract.decimals();
+        const tokenBalance = parseFloat(ethers.utils.formatUnits(balance, decimals));
+        const roundedBalance = Math.round(tokenBalance * 1000000) / 1000000;
+        
+        let messages = [];
+        let allConditionsMet = true;
+        
+        // 1. Kiểm tra token - SỬA: Dùng số đã làm tròn
+        if (roundedBalance < 1) {
+            messages.push(`❌ Số dư token: ${roundedBalance} (Tối thiểu: 1)`);
+            allConditionsMet = false;
         } else {
-            html += `<p style="color: var(--danger-color);">
-                <i class="fas fa-times-circle"></i> Số dư token: ${userTokenBalance} (Tối thiểu: 1)
-            </p>`;
-            allMet = false;
-            message = 'Không đủ token';
+            messages.push(`✅ Số dư token: ${roundedBalance} (Đủ)`);
         }
         
-        // 2. Kiểm tra đã vote chưa
-        if (!hasVoted) {
-            html += `<p style="color: var(--success-color);">
-                <i class="fas fa-check-circle"></i> Chưa bỏ phiếu trong đợt này
-            </p>`;
+        // 2. Kiểm tra đã vote
+        if (hasVotedUser) {
+            messages.push(`❌ Đã bỏ phiếu (mỗi địa chỉ chỉ được vote 1 lần)`);
+            allConditionsMet = false;
         } else {
-            html += `<p style="color: var(--danger-color);">
-                <i class="fas fa-times-circle"></i> Đã bỏ phiếu (mỗi địa chỉ chỉ được vote 1 lần)
-            </p>`;
-            allMet = false;
-            message = 'Đã bỏ phiếu';
+            messages.push(`✅ Chưa bỏ phiếu (có thể vote)`);
         }
         
-        // 3. Kiểm tra thời gian voting
-        if (votingInfo.isActive) {
-            html += `<p style="color: var(--success-color);">
-                <i class="fas fa-check-circle"></i> Thời gian bỏ phiếu đang hoạt động
-            </p>`;
+        // 3. Kiểm tra thời gian
+        if (startTime === 0 || endTime === 0) {
+            messages.push(`⚠️ Chưa thiết lập thời gian bỏ phiếu`);
+        } else if (currentTime < startTime) {
+            const timeLeft = startTime - currentTime;
+            const days = Math.floor(timeLeft / 86400);
+            const hours = Math.floor((timeLeft % 86400) / 3600);
+            messages.push(`⏳ Chưa đến thời gian bỏ phiếu (còn ${days} ngày ${hours} giờ)`);
+            allConditionsMet = false;
+        } else if (currentTime > endTime) {
+            messages.push(`❌ Đã hết thời gian bỏ phiếu`);
+            allConditionsMet = false;
         } else {
-            html += `<p style="color: var(--danger-color);">
-                <i class="fas fa-times-circle"></i> Thời gian bỏ phiếu không hoạt động
-            </p>`;
-            allMet = false;
-            message = 'Không trong thời gian vote';
+            const timeLeft = endTime - currentTime;
+            const days = Math.floor(timeLeft / 86400);
+            const hours = Math.floor((timeLeft % 86400) / 3600);
+            messages.push(`✅ Đang trong thời gian bỏ phiếu (còn ${days} ngày ${hours} giờ)`);
         }
         
-        // 4. Kiểm tra giới hạn phiếu
-        if (votingInfo.maxVotes === 0) {
-            html += `<p style="color: var(--success-color);">
-                <i class="fas fa-check-circle"></i> Không giới hạn số phiếu
-            </p>`;
-        } else if (votingInfo.votesCount < votingInfo.maxVotes) {
-            html += `<p style="color: var(--success-color);">
-                <i class="fas fa-check-circle"></i> Số phiếu còn lại: ${votingInfo.remainingVotes}
-            </p>`;
+        // 4. Kiểm tra trạng thái hệ thống
+        if (isPaused) {
+            messages.push(`❌ Hệ thống đã tạm dừng (Paused)`);
+            allConditionsMet = false;
         } else {
-            html += `<p style="color: var(--danger-color);">
-                <i class="fas fa-times-circle"></i> Đã đạt số phiếu tối đa (${votingInfo.maxVotes})
-            </p>`;
-            allMet = false;
-            message = 'Đã đạt số phiếu tối đa';
+            messages.push(`✅ Hệ thống đang hoạt động`);
         }
         
-        if (requirements) {
-            requirements.innerHTML = html;
-            requirements.style.display = 'block';
+        // 5. Hiển thị tất cả thông báo
+        const requirementsDiv = document.getElementById('voteRequirements');
+        if (requirementsDiv) {
+            requirementsDiv.style.display = 'block';
+            requirementsDiv.innerHTML = `
+                <h4>Điều kiện bỏ phiếu:</h4>
+                <div style="background: rgba(0,0,0,0.1); padding: 15px; border-radius: 8px;">
+                    ${messages.map(msg => `<p style="margin: 5px 0;">${msg}</p>`).join('')}
+                </div>
+            `;
         }
         
-        // Cập nhật nút vote
-        updateVoteButtonState();
-        
-        return { allMet, message };
+        return {
+            allMet: allConditionsMet,
+            message: allConditionsMet ? 'Có thể bỏ phiếu' : 'Không đủ điều kiện bỏ phiếu'
+        };
         
     } catch (error) {
-        console.error('Error checking eligibility:', error);
-        showNotification('Lỗi kiểm tra điều kiện', 'error');
-        return { allMet: false, message: 'Lỗi kiểm tra' };
+        console.error('Error checking voting eligibility:', error);
+        return {
+            allMet: false,
+            message: 'Lỗi kiểm tra điều kiện'
+        };
     }
 }
 
@@ -1496,7 +1569,10 @@ function updateVoteButtonState() {
     const voteButton = document.getElementById('voteButton');
     if (!voteButton) return;
     
-    const canVote = userTokenBalance >= 1 && 
+    // Làm tròn số dư token để so sánh
+    const roundedBalance = Math.round(userTokenBalance * 1000000) / 1000000;
+    
+    const canVote = roundedBalance >= 1 && 
                    !hasVoted && 
                    votingInfo.isActive && 
                    (votingInfo.maxVotes === 0 || votingInfo.votesCount < votingInfo.maxVotes);
@@ -1505,10 +1581,20 @@ function updateVoteButtonState() {
         voteButton.disabled = false;
         voteButton.innerHTML = '<i class="fas fa-vote-yea"></i> Bỏ phiếu';
         voteButton.className = 'btn btn-primary';
+        voteButton.title = 'Click để bỏ phiếu';
     } else {
         voteButton.disabled = true;
         voteButton.innerHTML = '<i class="fas fa-ban"></i> Không thể bỏ phiếu';
         voteButton.className = 'btn btn-secondary';
+        
+        // Thêm tooltip giải thích
+        let reason = '';
+        if (roundedBalance < 1) reason = 'Không đủ token';
+        else if (hasVoted) reason = 'Đã bỏ phiếu rồi';
+        else if (!votingInfo.isActive) reason = 'Không trong thời gian bỏ phiếu';
+        else if (votingInfo.maxVotes > 0 && votingInfo.votesCount >= votingInfo.maxVotes) reason = 'Đã đạt số phiếu tối đa';
+        
+        voteButton.title = reason;
     }
 }
 
@@ -1525,6 +1611,13 @@ async function vote() {
     
     if (!WALLET_CONNECTED) {
         showNotification('Vui lòng kết nối ví trước', 'error');
+        return;
+    }
+
+    // Kiểm tra điều kiện bỏ phiếu với số dư chính xác
+    const tokenCheck = await checkTokenBalancePrecise();
+    if (!tokenCheck.hasEnough) {
+        showNotification(`Không đủ token để bỏ phiếu. Số dư: ${tokenCheck.formattedBalance}`, 'error');
         return;
     }
     
@@ -2283,7 +2376,7 @@ async function updateVotingInfo() {
     }
 }
     */
-
+/*
 // nhận token
 async function buyTokens(amount) {
     if (!WALLET_CONNECTED) {
@@ -2314,7 +2407,7 @@ async function buyTokens(amount) {
         showNotification('Lỗi mua token: ' + error.message, 'error');
     }
 }
-
+*/
 // Thêm hàm cập nhật thống kê mới
 async function updateVoteStats() {
     try {
